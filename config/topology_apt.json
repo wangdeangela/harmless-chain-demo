@@ -1,0 +1,61 @@
+{
+  "scenarioId": "apt-lateral-blocked",
+  "title": "生产环境攻击面拓扑 · APT 横向移动链",
+  "viewBox": "0 0 1100 720",
+  "zones": [
+    {"id": "work", "label": "办公终端区", "x": 15, "y": 25, "w": 220, "h": 480, "fill": "#0f172a"},
+    {"id": "border", "label": "网络分区边界", "x": 250, "y": 25, "w": 180, "h": 480, "fill": "#1a1f2e"},
+    {"id": "server", "label": "数据中心 / 服务器区", "x": 445, "y": 25, "w": 280, "h": 480, "fill": "#0f1a24"},
+    {"id": "cloud", "label": "私有云资源池", "x": 740, "y": 25, "w": 160, "h": 240, "fill": "#141820"},
+    {"id": "sec", "label": "安全运营中心 (SOC)", "x": 15, "y": 520, "w": 885, "h": 185, "fill": "#0d1520"}
+  ],
+  "nodes": [
+    {"id": "openaev", "type": "runner", "label": "OpenAEV", "sub": "横向 Inject", "ip": "10.10.1.51", "x": 80, "y": 90},
+    {"id": "endpoint-a", "type": "desktop", "label": "办公终端 A", "sub": "Windows 11", "ip": "10.10.1.50", "x": 120, "y": 200},
+    {"id": "endpoint-b", "type": "desktop", "label": "办公终端 B", "sub": "Windows 11", "ip": "10.10.1.51", "x": 120, "y": 320},
+    {"id": "ad", "type": "ad", "label": "AD 域控", "sub": "corp.local", "ip": "10.10.1.10", "x": 120, "y": 430},
+    {"id": "edr-a", "type": "edr", "label": "EDR Agent", "sub": "终端防护", "ip": "10.10.1.50", "x": 200, "y": 260},
+    {"id": "fw-zone", "type": "firewall", "label": "分区防火墙", "sub": "FW-Deny-9001", "ip": "10.10.0.1", "x": 320, "y": 200},
+    {"id": "ips", "type": "ips", "label": "IPS", "sub": "跨区检测", "ip": "10.10.0.2", "x": 320, "y": 350},
+    {"id": "vpn-gw", "type": "gateway", "label": "VPN 网关", "sub": "远程接入", "ip": "10.10.0.5", "x": 320, "y": 90},
+    {"id": "file-srv", "type": "server", "label": "文件服务器", "sub": "file-server-b", "ip": "10.10.2.80", "x": 520, "y": 200},
+    {"id": "vm-file", "type": "cloud", "label": "云主机 file-01", "sub": "8C16G · SMB", "ip": "10.10.2.81", "x": 620, "y": 200},
+    {"id": "app-srv", "type": "application", "label": "业务应用", "sub": "ERP 服务", "ip": "10.10.2.90", "x": 520, "y": 350},
+    {"id": "edr-srv", "type": "edr", "label": "EDR Server", "sub": "服务器 Agent", "ip": "10.10.2.80", "x": 620, "y": 350},
+    {"id": "backup", "type": "nas", "label": "备份服务器", "sub": "Veeam", "ip": "10.10.2.100", "x": 520, "y": 450},
+    {"id": "cloud-mgmt", "type": "cloud", "label": "云管平台", "sub": "OpenStack", "ip": "10.10.3.10", "x": 800, "y": 120},
+    {"id": "siem", "type": "siem", "label": "SOC / SIEM", "sub": "Syslog 汇聚", "ip": "10.10.50.10", "x": 200, "y": 580},
+    {"id": "logstash", "type": "siem", "label": "日志平台", "sub": "ES 集群", "ip": "10.10.50.15", "x": 400, "y": 580},
+    {"id": "collector", "type": "collector", "label": "防护对账", "sub": "日志核查", "ip": "10.10.50.11", "x": 600, "y": 580},
+    {"id": "orchestrator", "type": "orchestrator", "label": "ChainForge", "sub": "验证结论", "ip": "10.10.50.12", "x": 800, "y": 580}
+  ],
+  "links": [
+    {"from": "openaev", "to": "endpoint-a", "style": "control"},
+    {"from": "endpoint-a", "to": "fw-zone", "attack": true, "label": "SMB:445"},
+    {"from": "fw-zone", "to": "file-srv", "attack": true, "label": "blocked"},
+    {"from": "endpoint-b", "to": "ad", "style": "auth"},
+    {"from": "vpn-gw", "to": "fw-zone"},
+    {"from": "ips", "to": "fw-zone", "style": "monitor"},
+    {"from": "file-srv", "to": "vm-file", "style": "host"},
+    {"from": "file-srv", "to": "backup", "style": "backup"},
+    {"from": "app-srv", "to": "file-srv", "style": "data"},
+    {"from": "edr-a", "to": "endpoint-a", "style": "protect"},
+    {"from": "edr-srv", "to": "file-srv", "style": "protect"},
+    {"from": "cloud-mgmt", "to": "vm-file", "style": "mgmt"},
+    {"from": "fw-zone", "to": "logstash", "style": "log"},
+    {"from": "edr-a", "to": "logstash", "style": "log"},
+    {"from": "logstash", "to": "siem"},
+    {"from": "siem", "to": "collector"},
+    {"from": "collector", "to": "orchestrator"}
+  ],
+  "attackPath": ["openaev", "endpoint-a", "fw-zone"],
+  "deviceStatus": {
+    "fw-zone": {"status": "blocked", "detail": "TCP 445 deny"},
+    "ips": {"status": "pass", "detail": "旁路监测"},
+    "edr-a": {"status": "alert", "detail": "SMB 超时"},
+    "edr-srv": {"status": "idle", "detail": "无异常"},
+    "siem": {"status": "active", "detail": "5 条告警"},
+    "collector": {"status": "active", "detail": "3 hits · blocked"},
+    "vpn-gw": {"status": "pass", "detail": "正常"}
+  }
+}

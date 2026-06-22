@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>ChainForge · 无害化攻击链验证</title>
+  <style>
+    :root{--bg:#0a0e14;--panel:#111827;--border:#1f2937;--text:#e5e7eb;--muted:#6b7280;--blue:#3b82f6;--green:#10b981;--amber:#f59e0b;--red:#ef4444;--cyan:#22d3ee}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:"SF Mono","Menlo","PingFang SC",monospace;background:var(--bg);color:var(--text);font-size:12px;min-height:100vh}
+    .sans{font-family:"PingFang SC",system-ui,sans-serif}
+    header{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+    header h1{font-size:15px;font-weight:600}.sans header p{font-size:11px;color:var(--muted);margin-top:2px}
+    .badges{display:flex;gap:6px}.badge{font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid var(--border)}.badge.ok{border-color:var(--green);color:var(--green)}
+    nav{display:flex;gap:0;padding:0 20px;border-bottom:1px solid var(--border);background:#0d1117}
+    nav button{background:none;border:none;color:var(--muted);padding:10px 14px;font-size:12px;cursor:pointer;border-bottom:2px solid transparent;font-family:inherit}
+    nav button.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+    main{padding:16px 20px;max-width:1600px;margin:0 auto}
+    .panel{display:none}.panel.active{display:block}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+    select,button{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:7px 10px;font-size:12px;cursor:pointer;font-family:inherit}
+    button.go{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+    .pipe{display:flex;gap:4px;margin-bottom:12px}
+    .pipe .s{flex:1;background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:8px;text-align:center}
+    .pipe .s.on{border-color:var(--blue)}.pipe .s.ok{border-color:var(--green)}
+    .metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+    .m{background:var(--panel);border:1px solid var(--border);border-radius:4px;padding:10px;text-align:center}
+    .m .v{font-size:18px;font-weight:700;color:var(--cyan)}.m .l{font-size:10px;color:var(--muted);margin-top:2px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+    @media(max-width:900px){.grid2,.grid3,.metrics{grid-template-columns:1fr}}
+    .box{background:var(--panel);border:1px solid var(--border);border-radius:4px;margin-bottom:10px}
+    .box-h{padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted);font-size:11px;display:flex;justify-content:space-between}
+    .box-b{padding:0;max-height:260px;overflow-y:auto}
+    .logline{padding:4px 10px;border-bottom:1px solid #1a2332;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-all}
+    .logline:hover{background:#1a2332}
+    .logline.hit{background:rgba(16,185,129,.08);border-left:2px solid var(--green)}
+    .logline.alert{color:var(--amber)}.logline.deny{color:var(--red)}.logline.info{color:var(--muted)}
+    .logline.log-ph-P1{background:rgba(34,211,238,.06);border-left:2px solid var(--cyan)}
+    .logline.log-ph-P2{background:rgba(139,92,246,.08);border-left:3px solid #a78bfa}
+    .logline.log-ph-P3{background:rgba(239,68,68,.06);border-left:2px solid var(--red)}
+    .logline.log-ph-P4{background:rgba(16,185,129,.06);border-left:2px solid var(--green)}
+    .logline.log-plan-header{background:rgba(99,102,241,.15);border-left:3px solid #6366f1;font-weight:600;color:#c7d2fe}
+    .logline.log-plan-path{border-left:3px solid #6366f1}
+    .logline.log-plan-divider{background:rgba(139,92,246,.12);color:#c4b5fd;font-weight:600;text-align:center;border-left:none}
+    .logline.log-plan-ptai{border-left:3px solid #818cf8}
+    .logline.log-plan-oae{border-left:3px solid #c084fc}
+    .logline.log-plan-col{border-left:3px solid #2dd4bf}
+    .logline.log-plan-alt{border-left:3px solid #f59e0b}
+    .logline.log-plan-evidence{border-left:3px solid #a78bfa}
+    .lk-time{color:#9ca3af}.lk-ip{color:#38bdf8;font-weight:600}.lk-tech{color:#c084fc;font-weight:600;background:rgba(192,132,252,.15);padding:0 3px;border-radius:2px}
+    .lk-alert{color:#fbbf24;font-weight:600}.lk-deny{color:#f87171;font-weight:600}.lk-ok{color:#34d399;font-weight:600}
+    .lk-rule{color:#fb923c;background:rgba(251,146,60,.12);padding:0 3px;border-radius:2px}
+    .lk-step{color:#60a5fa;font-weight:600}.lk-track{color:#a5b4fc;font-weight:600}.lk-host{color:#2dd4bf}
+    .lk-phase{color:#a78bfa;font-weight:700;margin-right:4px}
+    .log-group[data-cat="plan"] summary{color:#c4b5fd}
+    .log-group[data-cat="plan"][open] summary{background:rgba(139,92,246,.1)}
+    .tag{display:inline-block;font-size:10px;padding:1px 5px;border-radius:3px;background:#1f2937;color:var(--muted);margin-right:4px}
+    .tag.g{background:#064e3b;color:var(--green)}.tag.r{background:#450a0a;color:var(--red)}.tag.a{background:#422006;color:var(--amber)}
+    table{width:100%;border-collapse:collapse} th,td{padding:6px 8px;border-bottom:1px solid var(--border);text-align:left;font-size:11px} th{color:var(--muted)}
+    tr.hl{background:rgba(59,130,246,.1)}
+    .step{padding:6px 8px;margin-bottom:4px;background:#0d1117;border-left:2px solid var(--border);border-radius:2px}
+    .step.ok{border-left-color:var(--green)}.step.fail{border-left-color:var(--red)}
+    .hidden{display:none}
+    .run-meta{color:var(--muted);font-size:10px;margin-left:auto}
+    .query{font-size:10px;color:var(--cyan);padding:8px 10px;background:#0d1117}
+    #topo-svg{width:100%;height:auto;min-height:520px;background:linear-gradient(180deg,#0a0e14 0%,#0d1117 100%);border-radius:4px}
+    .topo-legend{display:flex;gap:10px 16px;flex-wrap:wrap;padding:10px 12px;font-size:10px;color:var(--muted);border-top:1px solid var(--border)}
+    .leg-item{display:flex;align-items:center;gap:5px}
+    .leg-dot{width:10px;height:10px;border-radius:2px}
+    .leg-icon{width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+    .pulse{animation:pulse 2s infinite}
+    @keyframes nodeFlash{0%,100%{stroke-width:2.5}50%{stroke-width:4}}
+    @keyframes dashFlow{to{stroke-dashoffset:-24}}
+    .node-active{animation:nodeFlash 1.4s ease-in-out infinite}
+    .link-flow{animation:dashFlow 1.4s linear infinite}
+    .topo-progress{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--border);font-size:10px}
+    .topo-progress span{padding:3px 8px;border-radius:3px;background:#1f2937;color:var(--muted)}
+    .topo-progress span.on{background:#1e3a5f;color:var(--cyan);border:1px solid var(--blue)}
+    .topo-progress span.done{background:#064e3b;color:var(--green)}
+    .topo-verdict{margin:8px 12px;padding:10px 12px;border-radius:6px;border:1px solid var(--border);display:none}
+    .topo-verdict.show{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+    .topo-verdict .tv-score{font-size:20px;font-weight:700;color:var(--cyan)}
+    .topo-verdict.alert{border-color:var(--amber);background:rgba(245,158,11,.08)}
+    .topo-verdict.blocked{border-color:var(--red);background:rgba(239,68,68,.08)}
+    .topo-verdict.ok{border-color:var(--green);background:rgba(16,185,129,.08)}
+    .workspace{display:grid;grid-template-columns:1fr 360px;gap:10px;align-items:start;transition:grid-template-columns .25s ease}
+    .workspace.logs-collapsed{grid-template-columns:1fr 36px}
+    .workspace-topo{min-width:0}
+    .workspace-logs{background:var(--panel);border:1px solid var(--border);border-radius:4px;overflow:hidden;height:fit-content;max-height:calc(100vh - 220px);display:flex;flex-direction:column}
+    .workspace.logs-collapsed .workspace-logs .log-rail-body{display:none}
+    .workspace.logs-collapsed .workspace-logs .log-rail-h span:not(.log-rail-toggle){display:none}
+    .log-rail-h{padding:8px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);flex-shrink:0}
+    .log-rail-h .log-rail-toggle{margin-left:auto;background:none;border:1px solid var(--border);color:var(--muted);padding:2px 8px;border-radius:3px;cursor:pointer;font-size:10px}
+    .log-rail-h .log-rail-toggle:hover{color:var(--cyan);border-color:var(--cyan)}
+    .log-rail-tools{display:flex;gap:4px;margin-left:auto}
+    .log-rail-tools button{background:none;border:1px solid var(--border);color:var(--muted);padding:2px 6px;border-radius:3px;cursor:pointer;font-size:9px}
+    .log-rail-body{overflow-y:auto;flex:1}
+    .log-group{border-bottom:1px solid var(--border)}
+    .log-group summary{padding:7px 10px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text);user-select:none}
+    .log-group summary::-webkit-details-marker{display:none}
+    .log-group summary::before{content:'▸';color:var(--muted);font-size:10px;width:12px}
+    .log-group[open] summary::before{content:'▾'}
+    .log-group summary .lg-cnt{margin-left:auto;font-size:9px;color:var(--muted);background:#1f2937;padding:1px 5px;border-radius:8px}
+    .log-group summary .lg-cnt.has{color:var(--cyan)}
+    .log-group .log-body{max-height:120px;overflow-y:auto;background:#0a0e14}
+    .log-group.empty summary{opacity:.45}
+    .logline.new{animation:logIn .35s ease}
+    @keyframes logIn{from{opacity:0;transform:translateX(6px);background:rgba(34,211,238,.12)}to{opacity:1;transform:none}}
+    .metrics.compact{margin-bottom:8px;display:flex;gap:6px;flex-wrap:wrap}
+    .metrics.compact .m{flex:1;min-width:100px;padding:6px 8px}
+    .metrics.compact .m .v{font-size:15px}
+    .topo-box{margin-bottom:0}
+    #topo-svg{min-height:400px;max-height:58vh}
+    .topo-verdict.show{margin:0 0 8px;padding:8px 12px}
+    .topo-verdict .tv-score{font-size:16px}
+    .verdict-lock{padding:8px 12px;margin-bottom:8px;border-radius:6px;border:1px dashed var(--amber);background:rgba(245,158,11,.08);color:var(--amber);font-size:12px;text-align:center;animation:lockPulse 2s ease-in-out infinite}
+    @keyframes lockPulse{0%,100%{opacity:1}50%{opacity:.65}}
+    .workspace{min-height:420px}
+    @media(max-width:1100px){.workspace{grid-template-columns:1fr}.workspace-logs{max-height:320px}}
+  </style>
+</head>
+<body>
+<header class="sans">
+  <div><h1>ChainForge · 无害化攻击链验证</h1><p>日志还原 → 无害复现 → 防护对账 → 验证结论</p></div>
+  <div class="badges">
+    <span class="badge ok" id="b-portal">控制台</span>
+    <span class="badge" id="b-target">靶场</span>
+    <span class="badge" id="b-openaev">OpenAEV</span>
+  </div>
+</header>
+<nav class="sans">
+  <button class="active" data-p="center">验证推演</button>
+  <button data-p="logs">日志流</button>
+  <button data-p="dual">双轨执行</button>
+  <button data-p="collector">防护对账</button>
+  <button data-p="scenes">场景库</button>
+</nav>
+<main>
+  <div class="panel active" id="p-center">
+    <div class="toolbar sans">
+      <select id="scenario"><option value="sqli-waf-demo">SQL 注入 + WAF</option><option value="apt-lateral-blocked">APT 横向截断</option></select>
+      <select id="mode"><option value="simulated">离线推演</option><option value="live">实网验证</option></select>
+      <span class="tag" id="authTag">L2</span>
+      <button class="go" id="runBtn">启动验证</button>
+      <span class="run-meta" id="runMeta"></span>
+    </div>
+    <div class="pipe sans">
+      <div class="s" data-s="P1"><div>① 日志还原</div></div>
+      <div class="s" data-s="P2"><div>② 验证计划</div></div>
+      <div class="s" data-s="P3"><div>③ 双轨复现</div></div>
+      <div class="s" data-s="P4"><div>④ 防护对账</div></div>
+    </div>
+    <div class="workspace" id="workspace">
+      <div class="workspace-topo">
+        <div class="box topo-box">
+          <div class="box-h"><span id="topo-title">攻击面拓扑</span><span id="topo-hint">选择场景后启动验证</span><span id="anim-timer" class="tag hidden"></span></div>
+          <div class="topo-progress sans" id="topo-progress">
+            <span data-tp="P1">① 日志还原</span>
+            <span data-tp="P2">② 验证计划</span>
+            <span data-tp="P3">③ 双轨复现</span>
+            <span data-tp="P4">④ 防护对账</span>
+          </div>
+          <svg id="topo-svg" viewBox="0 0 1100 720" xmlns="http://www.w3.org/2000/svg"></svg>
+          <div class="topo-verdict sans" id="topo-verdict"></div>
+          <div class="topo-legend sans" id="topo-legend"></div>
+        </div>
+      </div>
+      <div class="workspace-logs" id="log-rail">
+        <div class="log-rail-h sans">
+          <span>日志还原</span>
+          <span id="live-log-count">0 条</span>
+          <div class="log-rail-tools">
+            <button type="button" id="logExpandAll">展开</button>
+            <button type="button" id="logCollapseAll">收起</button>
+          </div>
+          <button type="button" class="log-rail-toggle" id="logRailToggle" title="收起侧栏">◂</button>
+        </div>
+        <div class="log-rail-body" id="log-rail-body">
+          <details class="log-group" data-cat="siem"><summary>SIEM 关联告警 <span class="lg-cnt" data-c="siem">0</span></summary><div class="log-body" id="live-siem"></div></details>
+          <details class="log-group" data-cat="plan"><summary>验证计划 <span class="lg-cnt" data-c="plan">0</span></summary><div class="log-body" id="live-plan"></div></details>
+          <details class="log-group" data-cat="waf"><summary>WAF <span class="lg-cnt" data-c="waf">0</span></summary><div class="log-body" id="live-waf"></div></details>
+          <details class="log-group" data-cat="fw"><summary>防火墙 / IPS <span class="lg-cnt" data-c="fw">0</span></summary><div class="log-body" id="live-fw"></div></details>
+          <details class="log-group" data-cat="app"><summary>应用 / EDR <span class="lg-cnt" data-c="app">0</span></summary><div class="log-body" id="live-app"></div></details>
+          <details class="log-group" data-cat="auth"><summary>认证 / 数据库 <span class="lg-cnt" data-c="auth">0</span></summary><div class="log-body" id="live-auth"></div></details>
+          <details class="log-group" data-cat="exec"><summary>双轨执行 <span class="lg-cnt" data-c="exec">0</span></summary><div class="log-body" id="live-exec"></div></details>
+          <details class="log-group" data-cat="hits"><summary>对账命中 <span class="lg-cnt" data-c="hits">0</span></summary><div class="log-body" id="live-hits"></div></details>
+          <details class="log-group" data-cat="audit"><summary>Audit Log <span class="lg-cnt" data-c="audit">0</span></summary><div class="log-body" id="live-audit"></div></details>
+        </div>
+      </div>
+    </div>
+    <div id="verdict-lock" class="verdict-lock hidden sans">推演进行中 · 验证结论将在四阶段推演结束后输出</div>
+    <div id="metrics" class="metrics compact hidden sans">
+      <div class="m"><div class="v" id="m-score">—</div><div class="l">feasibilityScore</div></div>
+      <div class="m"><div class="v" id="m-verdict" style="font-size:14px">—</div><div class="l">验证结论</div></div>
+      <div class="m"><div class="v" id="m-col" style="font-size:12px">—</div><div class="l">防护对账</div></div>
+      <div class="m"><div class="v" id="m-gap" style="font-size:11px">—</div><div class="l">防护缺口</div></div>
+      <div class="m"><div class="v" id="m-closure" style="font-size:14px">—</div><div class="l">chainClosure</div></div>
+    </div>
+  </div>
+
+  <div class="panel" id="p-logs">
+    <div class="grid3">
+      <div class="box"><div class="box-h">验证计划</div><div class="box-b" id="log-plan"></div></div>
+      <div class="box"><div class="box-h">SIEM / SOC</div><div class="box-b" id="log-siem"></div></div>
+      <div class="box"><div class="box-h">WAF</div><div class="box-b" id="log-waf"></div></div>
+      <div class="box"><div class="box-h">防火墙 / IPS</div><div class="box-b" id="log-fw"></div></div>
+      <div class="box"><div class="box-h">应用 / EDR</div><div class="box-b" id="log-app"></div></div>
+      <div class="box"><div class="box-h">认证 / 数据库</div><div class="box-b" id="log-auth"></div></div>
+      <div class="box"><div class="box-h">双轨执行 / Syslog</div><div class="box-b" id="log-exec"></div></div>
+    </div>
+    <div class="box"><div class="box-h">Audit Log</div><div class="box-b" id="log-audit"></div></div>
+  </div>
+
+  <div class="panel" id="p-dual">
+    <div id="dual-empty" class="box"><div class="box-b" style="padding:20px;color:var(--muted)">启动验证后显示</div></div>
+    <div id="dual-body" class="hidden">
+      <div class="grid3">
+        <div class="box"><div class="box-h">AttackPath</div><div class="box-b" style="padding:8px" id="path-steps"></div></div>
+        <div class="box"><div class="box-h">pentest-ai</div><div class="box-b" style="padding:8px" id="poc-steps"></div></div>
+        <div class="box"><div class="box-h">OpenAEV</div><div class="box-b" style="padding:8px" id="inj-steps"></div></div>
+      </div>
+      <div class="box"><div class="box-h">联合判定矩阵</div><div class="box-b" style="padding:0"><table id="matrix"><thead><tr><th>PoC/Inject</th><th>防护对账</th><th>结论</th><th>缺口</th></tr></thead><tbody></tbody></table></div></div>
+    </div>
+  </div>
+
+  <div class="panel" id="p-collector">
+    <div id="col-empty" class="box"><div class="box-b" style="padding:20px;color:var(--muted)">启动验证后显示防护对账结果</div></div>
+    <div id="col-body" class="hidden">
+      <div class="box"><div class="box-h">对账查询条件</div><pre class="query" id="col-query"></pre></div>
+      <div class="grid2">
+        <div class="box"><div class="box-h">对账命中记录</div><div class="box-b" id="col-hits"></div></div>
+        <div class="box"><div class="box-h">对账结论</div><div class="box-b" style="padding:10px" id="col-verdict"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="p-scenes">
+    <div class="box"><div class="box-h">攻击场景</div><div class="box-b" style="padding:0"><table id="scene-table"><thead><tr><th>场景</th><th>验证轨</th><th>ATT&CK</th><th>状态</th></tr></thead><tbody></tbody></table></div></div>
+  </div>
+</main>
+
+<script>
+const $=id=>document.getElementById(id);
+let CFG={}, LOGS={}, TOPO={}, LAST=null, topoAnimToken=0, liveLogCounts={};
+const APP_BUILD='20260615-v2';
+const ANIM_TARGET_MS=90000; // 整体动画目标 90 秒（与解说词对齐）
+const COL_VERDICT_ZH={blocked:'已拦截',alerted_not_blocked:'有告警未拦截',silent:'无记录',late_alert:'延迟告警'};
+const GAP_ZH={'—':'无',detect_no_block:'只告警未阻断',detect_missing:'未发现'};
+function zhCol(v){return COL_VERDICT_ZH[v]||v;}
+function zhGap(v){return GAP_ZH[v]||v;}
+const LIVE_CATS=['siem','plan','waf','fw','app','auth','exec','hits','audit'];
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+const TYPE_COLOR={waf:'#f59e0b',firewall:'#ef4444',ips:'#f97316',siem:'#22d3ee',edr:'#a855f7',dlp:'#ec4899',server:'#3b82f6',database:'#10b981',runner:'#6366f1',collector:'#14b8a6',orchestrator:'#06b6d4',cloud:'#38bdf8',application:'#818cf8',loadbalancer:'#0ea5e9',k8s:'#326ce5',cache:'#fb923c',bastion:'#eab308',gateway:'#2dd4bf',ad:'#c084fc',nas:'#64748b',desktop:'#94a3b8'};
+const STATUS_COLOR={alert:'#f59e0b',blocked:'#ef4444',pass:'#10b981',active:'#22d3ee',idle:'#6b7280'};
+const ICON_SVG={
+  waf:'<path d="M8 1L1 4v4c0 4 3 7 7 8 4-1 7-4 7-8V4L8 1z" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M5 7l2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.2"/>',
+  firewall:'<rect x="1" y="5" width="4" height="3" fill="currentColor" opacity=".8"/><rect x="6" y="5" width="4" height="3" fill="currentColor" opacity=".8"/><rect x="11" y="5" width="2" height="3" fill="currentColor" opacity=".8"/><rect x="1" y="9" width="4" height="3" fill="currentColor" opacity=".6"/><rect x="6" y="9" width="4" height="3" fill="currentColor" opacity=".6"/><rect x="11" y="9" width="2" height="3" fill="currentColor" opacity=".6"/><path d="M0 4h14v1H0z" fill="currentColor"/>',
+  ips:'<circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width=".8" opacity=".5"/><circle cx="7" cy="7" r="1.5" fill="currentColor"/>',
+  siem:'<rect x="1" y="8" width="3" height="5" fill="currentColor"/><rect x="5.5" y="5" width="3" height="8" fill="currentColor" opacity=".8"/><rect x="10" y="2" width="3" height="11" fill="currentColor" opacity=".6"/>',
+  edr:'<rect x="1" y="2" width="12" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M1 10h12" stroke="currentColor"/><rect x="5" y="11" width="4" height="1.5" fill="currentColor"/><path d="M8 1L6 2h4L8 1z" fill="currentColor"/>',
+  dlp:'<rect x="3" y="6" width="8" height="7" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M5 6V4a3 3 0 016 0v2" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="7" cy="9.5" r="1" fill="currentColor"/>',
+  cloud:'<path d="M4 11h7a3 3 0 000-6 4 4 0 00-7.5-1A3 3 0 004 11z" fill="none" stroke="currentColor" stroke-width="1.2"/>',
+  server:'<rect x="2" y="1" width="10" height="4" rx=".5" fill="none" stroke="currentColor" stroke-width="1"/><rect x="2" y="6" width="10" height="4" rx=".5" fill="none" stroke="currentColor" stroke-width="1"/><rect x="2" y="11" width="10" height="2" rx=".5" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="4" cy="3" r=".6" fill="currentColor"/><circle cx="4" cy="8" r=".6" fill="currentColor"/>',
+  application:'<rect x="2" y="2" width="10" height="3" rx=".5" fill="currentColor" opacity=".9"/><rect x="2" y="6" width="10" height="3" rx=".5" fill="currentColor" opacity=".7"/><rect x="2" y="10" width="10" height="3" rx=".5" fill="currentColor" opacity=".5"/>',
+  database:'<ellipse cx="7" cy="3" rx="5" ry="2" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M2 3v8c0 1.1 2.2 2 5 2s5-.9 5-2V3" fill="none" stroke="currentColor" stroke-width="1.2"/><ellipse cx="7" cy="7" rx="5" ry="2" fill="none" stroke="currentColor" stroke-width=".8" opacity=".5"/>',
+  loadbalancer:'<path d="M1 7h4l2-3 2 6 2-4 2 1h0" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="7" r="1.5" fill="currentColor"/>',
+  k8s:'<path d="M7 1l5.5 3v6L7 13 1.5 10V4L7 1z" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="7" cy="7" r="1.5" fill="currentColor"/>',
+  cache:'<path d="M8 1L3 8h4l-1 5 6-8H8l1-4z" fill="currentColor"/>',
+  bastion:'<circle cx="5" cy="5" r="3" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M8 8l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M5 3v4M3 5h4" stroke="currentColor" stroke-width="1"/>',
+  runner:'<path d="M7 1l2 5h5l-4 3 1.5 5L7 11 3.5 14 5 9 1 6h5L7 1z" fill="currentColor"/>',
+  collector:'<path d="M2 2h10l-4 5 4 5H2l4-5-4-5z" fill="none" stroke="currentColor" stroke-width="1.2"/><circle cx="7" cy="7" r="1" fill="currentColor"/>',
+  orchestrator:'<circle cx="3" cy="7" r="2" fill="currentColor"/><circle cx="11" cy="3" r="2" fill="currentColor" opacity=".8"/><circle cx="11" cy="11" r="2" fill="currentColor" opacity=".8"/><path d="M5 6.5l4-2.5M5 7.5l4 2.5" stroke="currentColor" stroke-width=".8"/>',
+  gateway:'<path d="M1 12V5l6-4 6 4v7H1z" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="5.5" y="8" width="3" height="4" fill="currentColor" opacity=".6"/>',
+  ad:'<circle cx="5" cy="4" r="2" fill="currentColor"/><circle cx="10" cy="5" r="1.5" fill="currentColor" opacity=".7"/><path d="M1 12c0-2.2 1.8-4 4-4s4 1.8 4 4M8 12c0-1.5 1-2.8 2.5-3" fill="none" stroke="currentColor" stroke-width="1"/>',
+  nas:'<rect x="1" y="4" width="12" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="3" y="6" width="8" height="1" fill="currentColor" opacity=".5"/><circle cx="4" cy="10" r=".6" fill="currentColor"/><circle cx="6" cy="10" r=".6" fill="currentColor"/>',
+  desktop:'<rect x="1" y="2" width="12" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M4 13h6" stroke="currentColor" stroke-width="1.2"/><path d="M7 10v3" stroke="currentColor"/>'
+};
+const LEGEND_ITEMS=[
+  {type:'waf',label:'WAF'},{type:'firewall',label:'防火墙'},{type:'ips',label:'IPS'},{type:'edr',label:'EDR'},{type:'dlp',label:'DLP'},
+  {type:'siem',label:'SOC/SIEM'},{type:'collector',label:'防护对账'},{type:'orchestrator',label:'ChainForge'},
+  {type:'cloud',label:'云主机'},{type:'application',label:'应用服务'},{type:'server',label:'服务器'},{type:'database',label:'数据库'},
+  {type:'loadbalancer',label:'负载均衡'},{type:'k8s',label:'K8s'},{type:'gateway',label:'网关'},{type:'runner',label:'验证引擎'}
+];
+function topoIcon(type,col){const p=ICON_SVG[type]||ICON_SVG.server;return`<g transform="translate(-7,-7)" color="${col}">${p}</g>`;}
+function renderLegend(){
+  const el=$('topo-legend'); if(!el) return;
+  el.innerHTML=LEGEND_ITEMS.map(i=>`<div class="leg-item"><svg class="leg-icon" viewBox="0 0 14 14">${topoIcon(i.type,TYPE_COLOR[i.type]||'#6b7280')}</svg>${i.label}</div>`).join('')
+    +'<div class="leg-item"><span style="color:var(--red)">━ ━</span> 攻击路径</div>'
+    +'<div class="leg-item"><span style="color:#10b98188">━</span> 防护/监测</div>'
+    +'<div class="leg-item"><span style="color:#374151">━</span> 日志汇聚</div>'
+    +'<div class="leg-item"><span style="color:#14b8a6">━</span> 防护对账链路</div>';
+}
+
+document.querySelectorAll('nav button').forEach(b=>{
+  b.onclick=()=>switchTab(b.dataset.p);
+});
+function switchTab(name){
+  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x.dataset.p===name));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  $(`p-${name}`).classList.add('active');
+}
+function resetTopoProgress(){
+  document.querySelectorAll('#topo-progress span').forEach(s=>{s.classList.remove('on','done');});
+  $('topo-verdict').className='topo-verdict sans';
+  $('topo-verdict').innerHTML='';
+}
+function setTopoPhase(phase,on){
+  const el=document.querySelector(`#topo-progress span[data-tp="${phase}"]`);
+  if(!el) return;
+  el.classList.remove('on','done');
+  if(on==='on') el.classList.add('on');
+  if(on==='done') el.classList.add('done');
+}
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+function highlightLog(text,line={}){
+  let s=esc(text);
+  const rules=[
+    [/\b(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}[^\s]*)/g,'lk-time'],
+    [/\b(\d{1,3}(?:\.\d{1,3}){3})\b/g,'lk-ip'],
+    [/\b(T\d{4}(?:\.\d{3})?)\b/g,'lk-tech'],
+    [/\b(WAF-[A-Za-z0-9-]+|FW-[A-Za-z0-9-]+|EDR-[A-Za-z0-9-]+|CORR-[A-Za-z0-9-]+|IPS-[A-Za-z0-9-]+|PP-\d{2})\b/g,'lk-rule'],
+    [/\b(step-[a-z0-9-]+|chain_id=[A-Z0-9-]+|path-[a-z0-9-]+|plan-[a-z0-9-]+)\b/gi,'lk-step'],
+    [/\b(pentest-ai|openaev|collector|chainforge-orchestrator)\b/gi,'lk-track'],
+    [/\b([a-z0-9.-]+\.(corp|local))\b/gi,'lk-host'],
+    [/\b(ALERT|alert|alerted|WARN)\b/g,'lk-alert'],
+    [/\b(DENY|deny|blocked|fail|timeout)\b/gi,'lk-deny'],
+    [/\b(allow|pass|confirmed|MATCH|correlate|START)\b/gi,'lk-ok'],
+  ];
+  rules.forEach(([re,cls])=>{s=s.replace(re,m=>`<span class="${cls}">${m}</span>`);});
+  if(line.phase==='P1') return `<span class="lk-phase">①</span>${s}`;
+  if(line.phase==='P2') return `<span class="lk-phase">②</span>${s}`;
+  if(line.phase==='P3') return `<span class="lk-phase">③</span>${s}`;
+  if(line.phase==='P4') return `<span class="lk-phase">④</span>${s}`;
+  return s;
+}
+function renderLogLines(el,lines,cls=''){if(!el)return;el.innerHTML=lines.length?lines.map(l=>`<div class="logline ${l.cls||cls} ${l.hit?'hit':''} ${l.phase?'log-ph-'+l.phase:''}">${highlightLog(l.text,l)}</div>`).join(''):'<div class="logline info">—</div>';}
+
+function resetLiveLogs(){
+  liveLogCounts={}; LIVE_CATS.forEach(c=>{liveLogCounts[c]=0;const el=$(`live-${c}`);if(el)el.innerHTML='<div class="logline info">等待验证启动…</div>';updateLogGroupCount(c);});
+  $('live-log-count').textContent='0 条';
+  document.querySelectorAll('.log-group').forEach(g=>{g.classList.add('empty');g.removeAttribute('open');});
+}
+function updateLogGroupCount(cat){
+  const n=liveLogCounts[cat]||0;
+  const badge=document.querySelector(`.lg-cnt[data-c="${cat}"]`);
+  if(badge){badge.textContent=n;badge.classList.toggle('has',n>0);}
+  const grp=document.querySelector(`.log-group[data-cat="${cat}"]`);
+  if(grp) grp.classList.toggle('empty',n===0);
+  $('live-log-count').textContent=Object.values(liveLogCounts).reduce((a,b)=>a+b,0)+' 条';
+}
+function appendLiveLog(cat,line,autoOpen=true){
+  const el=$(`live-${cat}`); if(!el) return;
+  if(liveLogCounts[cat]===0) el.innerHTML='';
+  liveLogCounts[cat]=(liveLogCounts[cat]||0)+1;
+  const div=document.createElement('div');
+  const phaseCls=line.phase?` log-ph-${line.phase}`:'';
+  div.className=`logline ${line.cls||''} ${line.hit?'hit':''} new${phaseCls}`;
+  div.innerHTML=highlightLog(line.text,line);
+  el.appendChild(div);
+  el.scrollTop=el.scrollHeight;
+  if(autoOpen) document.querySelector(`.log-group[data-cat="${cat}"]`)?.setAttribute('open','');
+  updateLogGroupCount(cat);
+}
+function buildPlanLogs(data){
+  const path=data.attackPath||{};
+  const plan=data.validationPlan||{};
+  const lines=[];
+  lines.push({text:`AttackPath · ${path.attackPathId||'—'} · chainClosure=${path.chainClosure??'—'} · authLevel=${path.authLevel||'L2'}`,cls:'log-plan-header',phase:'P2',hit:true});
+  (path.steps||[]).forEach((s,i)=>{
+    lines.push({text:`[路径 ${i+1}] ${s.stepId} · ${s.technique} → ${s.targetHostname||s.targetUrl||''} · 防护=${s.defenseControl||'—'} · ${s.priorAction||''}`,cls:'log-plan-path',phase:'P2'});
+  });
+  lines.push({text:`── ValidationPlan · ${plan.planId||plan.attackPathId||'plan'} · ${(plan.steps||[]).length} 条验证步骤 · SHACL ✓ ──`,cls:'log-plan-divider',phase:'P2',hit:true});
+  (plan.steps||[]).forEach(s=>{
+    const trackCls=s.track==='pentest-ai'?'log-plan-ptai':s.track==='openaev'?'log-plan-oae':s.track==='collector'?'log-plan-col':s.track==='alternative_proof'?'log-plan-alt':'log-plan-alt';
+    const detail=s.templateId||(s.expectedRules||[]).join('+')||s.maxAction||'—';
+    const target=s.targetUrl||s.targetHostname||'—';
+    lines.push({text:`[计划] ${s.stepId} · ${s.track==='collector'?'防护对账':s.track} · ${detail} → ${target} · PP=${s.proofPointId||'—'}`,cls:trackCls,phase:'P2'});
+  });
+  return lines;
+}
+async function streamLogs(lines,delayMs=120){
+  for(const item of lines){
+    const batch=Array.isArray(item)?item:[item];
+    for(const x of batch){
+      if(x.cat&&x.line) appendLiveLog(x.cat,x.line);
+      else if(x.cat&&x.lines) x.lines.forEach(l=>appendLiveLog(x.cat,l,false));
+    }
+    if(delayMs) await delay(delayMs);
+  }
+}
+function buildLogTimeline(f,topo,runData={}){
+  const path=topo?.attackPath||[];
+  const pick=(cat,line)=>line?{cat,line}:null;
+  const withPhase=(cat,line,phase,cls='')=>line?{cat,line:{...line,phase,cls:cls||line.cls||''}}:null;
+  const nodeLogs={
+    pentest:[pick('exec',f.exec[0])].filter(Boolean),
+    openaev:[pick('exec',f.exec[1]||f.exec[0])].filter(Boolean),
+    lb:[pick('fw',f.fw[0])].filter(Boolean),
+    'fw-border':[pick('fw',f.fw[0]),pick('fw',f.fw[1])].filter(Boolean),
+    waf:f.waf.slice(0,3).map(l=>({cat:'waf',line:l})),
+    ips:[pick('fw',f.fw[2]||f.fw[1])].filter(Boolean),
+    'api-gw':[pick('app',f.app[0])].filter(Boolean),
+    k8s:[pick('app',f.app[1])].filter(Boolean),
+    'vm-web-01':[pick('app',f.app[2])].filter(Boolean),
+    'vm-web-02':[pick('app',f.app[3])].filter(Boolean),
+    web:f.app.slice(4,7).map(l=>({cat:'app',line:l})).concat(f.auth.slice(0,1).map(l=>({cat:'auth',line:l}))),
+    db:f.auth.slice(0,1).map(l=>({cat:'auth',line:l})).concat(f.auth.slice(1).map(l=>({cat:'auth',line:l}))),
+    'endpoint-a':[pick('app',f.app[0]),pick('exec',f.exec[0])].filter(Boolean),
+    'fw-zone':[pick('fw',f.fw[0]),pick('siem',f.siem[1])].filter(Boolean),
+    'file-srv':[pick('app',f.app[1])].filter(Boolean),
+    edr:[pick('app',f.app[f.app.length-1])].filter(Boolean),
+    'edr-a':[pick('app',f.app[0])].filter(Boolean),
+  };
+  const pickP1=(cat,line)=>line?{cat,line:{...line,phase:'P1'}}:null;
+  return {
+    P1:[pickP1('siem',f.siem[0]),pickP1('audit',f.audit[0])].filter(Boolean),
+    P2:buildPlanLogs(runData).map(l=>({cat:'plan',line:l})).concat([
+      withPhase('siem',f.siem[1],'P2','log-plan-evidence'),
+      withPhase('fw',f.fw[0],'P2',f.fw[0]?.cls||'log-plan-evidence'),
+      withPhase('audit',f.audit[1],'P2','log-plan-evidence'),
+    ].filter(Boolean)),
+    path:path.map(nid=>({node:nid,items:(nodeLogs[nid]||[]).map(x=>({...x,line:{...x.line,phase:'P3'}}))})),
+    P4:[withPhase('siem',f.siem[f.siem.length-1],'P4')].filter(Boolean),
+    collect:{
+      logstash:[withPhase('siem',f.siem[2],'P4')].filter(Boolean),
+      siem:[withPhase('siem',f.siem[3]||f.siem[2],'P4')].filter(Boolean),
+      collector:[{cat:'audit',line:{text:`${(f.audit[2]||{}).time||''} collector · 按 AttackPath 查询 WAF/FW 日志 · 窗口=120s`,phase:'P4'}}].filter(x=>x.line.text.trim()),
+      orchestrator:[{cat:'audit',line:{text:'chainforge-orchestrator · 聚合双轨结果与防护对账命中 · 准备输出验证结论…',phase:'P4'}}],
+    },
+    finalVerdict:[
+      ...f.hits.map(l=>({cat:'hits',line:{...l,phase:'P4',hit:true}})),
+      ...(f.audit.slice(2)||[]).map(l=>({cat:'audit',line:{...l,phase:'P4',hit:true,text:`${l.time} ${l.operator} step=${l.stepId} ${l.action} verdict=${l.verdict}${l.score?' score='+l.score:''}`}})),
+    ],
+  };
+}
+function buildAnimPlan(timeline,pathLen){
+  const countLogs=arr=>(arr||[]).length;
+  const pathSteps=timeline.path||[];
+  const collectKeys=['logstash','siem','collector','orchestrator'];
+  const pathLogs=pathSteps.reduce((s,p)=>s+countLogs(p.items),0);
+  const collectLogs=collectKeys.reduce((s,k)=>s+countLogs(timeline.collect?.[k]),0);
+  const p4Logs=countLogs(timeline.P4||[]);
+  const finalLogs=countLogs(timeline.finalVerdict||[]);
+  const totalLogs=countLogs(timeline.P1)+countLogs(timeline.P2)+pathLogs+collectLogs+p4Logs+finalLogs;
+  const T=ANIM_TARGET_MS;
+  const base={
+    intro:T*0.05,
+    phasePause:T*0.035,
+    nodePause:pathLen>0?T*0.40/pathLen:T*0.05,
+    logGap:totalLogs>0?T*0.16/totalLogs:800,
+    collectStepPause:T*0.13/4,
+    collectLogGap:collectLogs>0?T*0.07/collectLogs:600,
+  };
+  const estimate=p=>{
+    let ms=p.intro+p.phasePause*4;
+    ms+=countLogs(timeline.P1)*p.logGap+countLogs(timeline.P2)*p.logGap;
+    pathSteps.forEach(step=>{
+      const n=countLogs(step.items);
+      ms+=n*p.logGap+Math.max(0,p.nodePause-n*p.logGap);
+    });
+    collectKeys.forEach(k=>{
+      ms+=countLogs(timeline.collect?.[k])*p.collectLogGap+p.collectStepPause;
+    });
+    ms+=p4Logs*p.logGap+finalLogs*p.logGap+T*0.04;
+    return ms;
+  };
+  const scale=T/estimate(base);
+  return{
+    intro:Math.round(base.intro*scale),
+    phasePause:Math.round(base.phasePause*scale),
+    logGap:Math.round(base.logGap*scale),
+    nodePause:Math.round(base.nodePause*scale),
+    collectStepPause:Math.round(base.collectStepPause*scale),
+    collectLogGap:Math.round(base.collectLogGap*scale),
+    totalSec:Math.round(T/1000),
+  };
+}
+let animTimerId=null;
+function startAnimTimer(totalSec){
+  stopAnimTimer();
+  const el=$('anim-timer');
+  el.classList.remove('hidden');
+  const t0=Date.now();
+  const tick=()=>{
+    const left=Math.max(0,totalSec-Math.floor((Date.now()-t0)/1000));
+    el.textContent=left+'s';
+    if(left<=0) stopAnimTimer();
+  };
+  tick();
+  animTimerId=setInterval(tick,500);
+}
+function stopAnimTimer(){
+  if(animTimerId){clearInterval(animTimerId);animTimerId=null;}
+  $('anim-timer')?.classList.add('hidden');
+}
+async function emitLogItems(items,gap){
+  for(const x of items){
+    appendLiveLog(x.cat,x.line);
+    if(gap) await delay(gap);
+  }
+}
+function setLogRailCollapsed(collapsed){
+  $('workspace').classList.toggle('logs-collapsed',collapsed);
+  $('logRailToggle').textContent=collapsed?'▸':'◂';
+  $('logRailToggle').title=collapsed?'展开日志侧栏':'收起侧栏';
+}
+
+function formatLogs(logs){
+  const siem=(logs.siemAlerts||[]).map(a=>({text:a.raw,hit:a.action==='correlate',phase:'P1',cls:a.action==='correlate'?'':'info'}));
+  const waf=(logs.wafLogs||[]).map(l=>({text:`${l.time} ${l.client} ${l.method} ${l.uri} [${l.rule}] ${l.action} ${l.payload_snip}`,cls:'alert',phase:'P3'}));
+  const fw=[...(logs.firewallLogs||[]),...(logs.ipsLogs||[])].map(l=>{
+    if(l.sig) return {text:`${l.time} IPS ${l.src}→${l.dst} sig=${l.sig} ${l.action} ${l.detail}`,cls:l.action==='deny'?'deny':'info',phase:'P3'};
+    return {text:`${l.time} FW ${l.src}→${l.dst}:${l.port} ${l.action} rule=${l.rule}`,cls:l.action==='deny'?'deny':'info',phase:'P3'};
+  });
+  const app=[...(logs.appLogs||[]),...(logs.edrLogs||[])].map(l=>({text:`${l.time} [${l.level||l.event||'INFO'}] ${l.host||''} ${l.msg||l.detail||l.dst||''} ${l.result||''}`.trim(),phase:'P3'}));
+  const auth=[...(logs.authLogs||[]),...(logs.dbLogs||[])].map(l=>({text:`${l.time} ${l.host||l.user||''} ${l.action||l.level||''} ${l.msg||l.method||''}`.trim(),phase:'P3'}));
+  const exec=[...(logs.executionLogs||[]),...(logs.syslogRaw||[])].map(l=>({text:l.raw||`${l.time} ${l.source} ${l.template} → ${l.result} ${l.detail||''}`,phase:'P3'}));
+  const audit=(logs.auditLog||[]).map((l,i)=>({text:`${l.time} ${l.operator} step=${l.stepId} ${l.action} verdict=${l.verdict}${l.score?' score='+l.score:''}`,hit:true,phase:i<2?'P1':i===1?'P2':'P4',cls:i===1?'log-plan-evidence':''}));
+  const hits=(logs.collectorHits||[]).map(h=>({text:`${h.time} HIT ${h.rule_id} ${h.action} ${h.detail}`,hit:true,phase:'P4'}));
+  return {siem,waf,fw,app,auth,exec,audit,hits,plan:[]};
+}
+
+function renderTopology(topo, opts={}){
+  if(!topo||!topo.nodes) return;
+  TOPO=topo;
+  const pathStep=opts.pathStep!==undefined?opts.pathStep:-1;
+  const activeNode=opts.activeNode||null;
+  const collectLit=opts.collectLit||0;
+  const animate=!!opts.animate;
+  const fullPath=topo.attackPath||[];
+  const visiblePath=pathStep<0?fullPath:fullPath.slice(0,Math.max(0,pathStep));
+  const pathSet=new Set(visiblePath);
+  const collectChain=['logstash','siem','collector','orchestrator'];
+  const collectSet=new Set(collectChain.slice(0,collectLit));
+  const prevPathNode=visiblePath.length>1?visiblePath[visiblePath.length-2]:null;
+
+  $('topo-title').textContent=topo.title||'攻击面拓扑';
+  const svg=$('topo-svg');
+  if(topo.viewBox) svg.setAttribute('viewBox',topo.viewBox);
+  const nodeMap={}; topo.nodes.forEach(n=>nodeMap[n.id]=n);
+  const NW=118,NH=62;
+  let h='<defs>';
+  h+='<style>.link-flow{animation:dashFlow 1.4s linear infinite}.node-active{animation:nodeFlash 1.4s ease-in-out infinite}</style>';
+  h+='<marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#6b7280"/></marker>';
+  h+='<marker id="arrow-red" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ef4444"/></marker>';
+  h+='<marker id="arrow-cyan" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#22d3ee"/></marker>';
+  h+='<filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>';
+  h+='<filter id="glow-red"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>';
+  h+='</defs>';
+  (topo.zones||[]).forEach(z=>{
+    const fill=z.fill||'transparent';
+    const dim=pathStep===0?' opacity=".45"':'';
+    h+=`<rect x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" fill="${fill}" stroke="#374151" stroke-dasharray="8,4" rx="8" opacity=".85"${dim}/>`;
+    h+=`<text x="${z.x+10}" y="${z.y+18}" fill="#9ca3af" font-size="11" font-weight="600">${z.label}</text>`;
+  });
+  const isPathLink=(from,to,l)=>{
+    for(let i=0;i<visiblePath.length-1;i++){
+      if(visiblePath[i]===from&&visiblePath[i+1]===to) return i;
+    }
+    if(activeNode===to&&(from===prevPathNode||l.attack)&&pathSet.has(from)) return visiblePath.length-2;
+    return -1;
+  };
+  const isCollectLink=(from,to)=>{
+    for(let i=0;i<collectLit-1;i++){
+      if(collectChain[i]===from&&collectChain[i+1]===to) return true;
+    }
+    return false;
+  };
+  (topo.links||[]).forEach((l,li)=>{
+    const a=nodeMap[l.from],b=nodeMap[l.to]; if(!a||!b) return;
+    const pathIdx=isPathLink(l.from,l.to,l);
+    const onPath=pathIdx>=0;
+    const attack=l.attack||onPath;
+    const collectLink=isCollectLink(l.from,l.to);
+    let col=attack?'#ef4444':collectLink?'#22d3ee':l.style==='log'?'#374151':l.style==='protect'?'#10b98166':l.style==='mgmt'?'#eab30855':'#4b5563';
+    const dash=attack||collectLink?'7,4':'none';
+    const sw=attack?2.5:collectLink?2:1;
+    const mk=attack?'url(#arrow-red)':collectLink?'url(#arrow-cyan)':'url(#arrow)';
+    const flowCls=(onPath&&activeNode===l.to&&animate)?' class="link-flow"':'';
+    const op=pathStep===0&&!collectLink?0.35:attack||onPath||collectLink?1:0.55;
+    h+=`<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${col}" stroke-width="${sw}" stroke-dasharray="${dash}" marker-end="${mk}" opacity="${op}"${flowCls}/>`;
+    if(l.label&&(onPath||pathStep<0)) h+=`<text x="${(a.x+b.x)/2}" y="${(a.y+b.y)/2-6}" fill="${attack?'#fca5a5':'#6b7280'}" font-size="9" text-anchor="middle" font-weight="${attack?'600':'400'}">${l.label}</text>`;
+  });
+  topo.nodes.forEach(n=>{
+    const col=TYPE_COLOR[n.type]||'#6b7280';
+    const st=(topo.deviceStatus||{})[n.id];
+    const stCol=st?STATUS_COLOR[st.status]||'#6b7280':'#374151';
+    const onPath=pathSet.has(n.id);
+    const isActive=activeNode===n.id;
+    const inCollect=collectSet.has(n.id);
+    const dim=pathStep===0&&!inCollect;
+    const rw=isActive?3.5:onPath||inCollect?2.5:1.5;
+    const pulse=st&&(st.status==='alert'||st.status==='blocked')&&(animate||isActive)?' class="pulse"':'';
+    const activeCls=isActive&&animate?' node-active':'';
+    const glow=isActive?' filter="url(#glow-red)"':onPath&&animate?' filter="url(#glow)"':inCollect?' filter="url(#glow)"':'';
+    const x=n.x-NW/2,y=n.y-NH/2;
+    const strokeCol=isActive?'#ef4444':inCollect?'#22d3ee':onPath?stCol:col;
+    h+=`<g id="topo-node-${n.id}"${pulse} opacity="${dim?0.4:1}">`;
+    h+=`<rect x="${x}" y="${y}" width="${NW}" height="${NH}" rx="7" fill="#0f172a" stroke="${strokeCol}" stroke-width="${rw}"${activeCls}${glow}/>`;
+    if(isActive) h+=`<rect x="${x-2}" y="${y-2}" width="${NW+4}" height="${NH+4}" rx="9" fill="none" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3" opacity=".6"/>`;
+    h+=`<rect x="${x}" y="${y}" width="${NW}" height="${NH}" rx="7" fill="${col}" opacity=".08"/>`;
+    h+=`<rect x="${x}" y="${y}" width="4" height="${NH}" rx="2" fill="${col}"/>`;
+    h+=`<svg x="${x+6}" y="${y+8}" width="22" height="22" viewBox="0 0 14 14">${topoIcon(n.type,col)}</svg>`;
+    h+=`<text x="${x+32}" y="${y+16}" fill="#f3f4f6" font-size="10" font-weight="600">${n.label}</text>`;
+    h+=`<text x="${x+32}" y="${y+28}" fill="#9ca3af" font-size="8">${n.sub||''}</text>`;
+    h+=`<text x="${x+32}" y="${y+40}" fill="#6b7280" font-size="7.5" font-family="monospace">${n.ip}</text>`;
+    const showSt=st&&(opts.showStatus||isActive||inCollect);
+    if(showSt){
+      h+=`<rect x="${x+32}" y="${y+44}" width="${NW-40}" height="12" rx="3" fill="${stCol}" opacity=".15"/>`;
+      h+=`<text x="${x+36}" y="${y+53}" fill="${stCol}" font-size="7.5">● ${st.detail}</text>`;
+    }
+    if(isActive&&animate){
+      h+=`<text x="${n.x}" y="${y-8}" fill="#ef4444" font-size="9" text-anchor="middle" font-weight="700">▶ 当前节点</text>`;
+    }
+    h+=`</g>`;
+  });
+  svg.innerHTML=h;
+  renderLegend();
+}
+
+function showTopoVerdict(data){
+  const v=data.verdict||{};
+  const el=$('topo-verdict');
+  const cls=v.verdict==='blocked'?'blocked':v.verdict==='partial'||v.verdict==='confirmed'?'alert':'ok';
+  el.className=`topo-verdict sans show ${cls}`;
+  el.innerHTML=`<div><div class="tv-score">${v.feasibilityScore??'—'}</div><div style="font-size:10px;color:var(--muted)">feasibilityScore</div></div>`
+    +`<div><div style="font-size:14px;font-weight:600;color:var(--cyan)">${v.verdict||'—'}</div><div style="font-size:10px;color:var(--muted)">验证结论 · ${zhCol(data.collector?.collectorVerdict)}</div></div>`
+    +`<div style="font-size:11px;color:var(--text);flex:1">${v.recommendation||''}</div>`;
+}
+
+async function playTopologyAnimation(data,token){
+  const topo=data.topology;
+  if(!topo) return;
+  resetVerdictUI();
+  $('verdict-lock').classList.remove('hidden');
+  const path=topo.attackPath||[];
+  const fullPath=path;
+  const nodeMap={}; topo.nodes.forEach(n=>nodeMap[n.id]=n);
+  const phaseLabels={P1:'① 日志还原 · 关联历史告警',P2:'② 验证计划 · 生成 AttackPath',P3:'③ 双轨复现 · PoC + Inject 执行',P4:'④ 防护对账 · 核查设备日志并下结论'};
+  const collectChain=['logstash','siem','collector','orchestrator'];
+  const collectLabels=['日志平台汇聚','SOC 告警关联','防护对账核查','验证结论输出'];
+  const logs=formatLogs(data.logs||LOGS);
+  const timeline=buildLogTimeline(logs,topo,data);
+  const pathSteps=timeline.path.length?timeline.path:path.map(nid=>({node:nid,items:[]}));
+  const timing=buildAnimPlan(timeline,pathSteps.length);
+  startAnimTimer(timing.totalSec);
+
+  resetTopoProgress();
+  resetLiveLogs();
+  setLogRailCollapsed(false);
+  renderTopology(topo,{pathStep:0,animate:false});
+  $('topo-hint').textContent=`验证启动 · 预计 ${timing.totalSec}s 完成推演…`;
+  await delay(timing.intro);
+  if(token!==topoAnimToken) return;
+
+  setTopoPhase('P1','on');
+  $('topo-hint').textContent=phaseLabels.P1;
+  document.querySelector('.pipe .s[data-s="P1"]')?.classList.add('on');
+  await emitLogItems(timeline.P1,timing.logGap);
+  if(token!==topoAnimToken) return;
+  await delay(timing.phasePause);
+  if(token!==topoAnimToken) return;
+  setTopoPhase('P1','done');
+  document.querySelector('.pipe .s[data-s="P1"]')?.classList.replace('on','ok');
+
+  setTopoPhase('P2','on');
+  $('topo-hint').textContent=phaseLabels.P2;
+  document.querySelector('.pipe .s[data-s="P2"]')?.classList.add('on');
+  document.querySelector('.log-group[data-cat="plan"]')?.setAttribute('open','');
+  await emitLogItems(timeline.P2,timing.logGap);
+  if(token!==topoAnimToken) return;
+  await delay(timing.phasePause);
+  if(token!==topoAnimToken) return;
+  setTopoPhase('P2','done');
+  document.querySelector('.pipe .s[data-s="P2"]')?.classList.replace('on','ok');
+
+  setTopoPhase('P3','on');
+  $('topo-hint').textContent='③ 双轨复现 · 攻击路径动态推演中…';
+  document.querySelector('.pipe .s[data-s="P3"]')?.classList.add('on');
+  for(let i=0;i<pathSteps.length;i++){
+    const {node:nid,items}=pathSteps[i];
+    const node=nodeMap[nid];
+    $('topo-hint').textContent=`攻击路径 ${i+1}/${pathSteps.length} · ${node?.label||nid}`;
+    renderTopology(topo,{pathStep:i+1,activeNode:nid,animate:true});
+    await emitLogItems(items,timing.logGap);
+    if(token!==topoAnimToken) return;
+    const nodeWait=Math.max(0,timing.nodePause-items.length*timing.logGap);
+    if(nodeWait) await delay(nodeWait);
+    if(token!==topoAnimToken) return;
+  }
+  setTopoPhase('P3','done');
+  document.querySelector('.pipe .s[data-s="P3"]')?.classList.replace('on','ok');
+  await delay(timing.phasePause);
+  if(token!==topoAnimToken) return;
+
+  setTopoPhase('P4','on');
+  $('topo-hint').textContent=phaseLabels.P4;
+  document.querySelector('.pipe .s[data-s="P4"]')?.classList.add('on');
+  for(let c=0;c<collectChain.length;c++){
+    const nid=collectChain[c];
+    $('topo-hint').textContent=`④ ${collectLabels[c]}`;
+    renderTopology(topo,{pathStep:fullPath.length,collectLit:c+1,animate:true});
+    await emitLogItems(timeline.collect[nid]||[],timing.collectLogGap);
+    if(token!==topoAnimToken) return;
+    await delay(timing.collectStepPause);
+    if(token!==topoAnimToken) return;
+  }
+  await emitLogItems(timeline.P4,timing.logGap);
+  if(token!==topoAnimToken) return;
+  await delay(timing.phasePause);
+  if(token!==topoAnimToken) return;
+  setTopoPhase('P4','done');
+  document.querySelector('.pipe .s[data-s="P4"]')?.classList.replace('on','ok');
+
+  $('topo-hint').textContent='④ 防护对账完成 · 正在生成验证结论…';
+  await emitLogItems(timeline.finalVerdict||[],timing.logGap);
+  if(token!==topoAnimToken) return;
+  await delay(Math.round(ANIM_TARGET_MS*0.04));
+  if(token!==topoAnimToken) return;
+
+  renderTopology(topo,{pathStep:fullPath.length,collectLit:collectChain.length,animate:true,showStatus:true});
+  revealVerdict(data);
+  const v=data.verdict||{};
+  $('topo-hint').textContent=`验证完成 · ${v.verdict||'—'} · score=${v.feasibilityScore??'—'} · ${timing.totalSec}s`;
+  stopAnimTimer();
+}
+
+async function loadScenario(scId){
+  LOGS=await fetch(`/api/logs/${scId}`).then(r=>r.json());
+  TOPO=await fetch(`/api/topology/${scId}`).then(r=>r.json());
+  const f=formatLogs(LOGS);
+  renderLogLines($('log-siem'),f.siem);
+  renderLogLines($('log-plan'),[]);
+  renderLogLines($('log-waf'),f.waf,'alert');
+  renderLogLines($('log-fw'),f.fw);
+  renderLogLines($('log-app'),f.app);
+  renderLogLines($('log-auth'),f.auth);
+  renderLogLines($('log-exec'),f.exec);
+  renderLogLines($('log-audit'),f.audit);
+  resetLiveLogs();
+  resetTopoProgress();
+  resetVerdictUI();
+  $('topo-hint').textContent='选择场景后点击「启动验证」';
+  document.querySelectorAll('.pipe .s').forEach(s=>s.classList.remove('on','ok'));
+  renderTopology(TOPO,{pathStep:0,animate:false});
+}
+
+function renderCollector(logs,collector,ctx){
+  $('col-empty').classList.add('hidden');$('col-body').classList.remove('hidden');
+  $('col-query').textContent=JSON.stringify(logs.collectorQuery||{},null,2);
+  renderLogLines($('col-hits'),formatLogs(logs).hits);
+  const v=collector.collectorVerdict||'—';
+  $('col-verdict').innerHTML=`<div class="step ${v==='blocked'?'fail':'ok'}"><span class="tag ${v==='blocked'?'r':'a'}">${zhCol(v)}</span> 命中 ${collector.hits||0} 条 · ${ctx?.reconciliation||''}</div>`;
+}
+
+function renderDual(data){
+  $('dual-empty').classList.add('hidden');$('dual-body').classList.remove('hidden');
+  $('path-steps').innerHTML=data.attackPath.steps.map(s=>`<div class="step ok"><span class="tag">${s.technique}</span> ${s.targetHostname||''}</div>`).join('');
+  const poc=data.execution.pocResults||[];
+  $('poc-steps').innerHTML=poc.length?poc.map(p=>`<div class="step ${p.status==='confirmed'?'ok':'fail'}">${p.templateId} → ${p.status}</div>`).join(''):'<div class="step">—</div>';
+  const inj=data.execution.injectResults||[];
+  $('inj-steps').innerHTML=inj.length?inj.map(p=>`<div class="step ${p.status==='confirmed'?'ok':'fail'}">${p.templateId} → ${p.status}</div>`).join(''):'<div class="step">—</div>';
+  const m=data.verdict.merged||{};
+  document.querySelectorAll('#matrix tbody tr').forEach(tr=>{tr.classList.remove('hl');if(m.defenseGap&&tr.dataset.gap===m.defenseGap)tr.classList.add('hl');else if(m.status==='blocked'&&tr.dataset.gap==='—')tr.classList.add('hl');});
+}
+
+function resetVerdictUI(){
+  $('metrics').classList.add('hidden');
+  $('verdict-lock').classList.add('hidden');
+  $('topo-verdict').className='topo-verdict sans';
+  $('topo-verdict').innerHTML='';
+  $('dual-empty').classList.remove('hidden');
+  $('dual-body').classList.add('hidden');
+  $('col-empty').classList.remove('hidden');
+  $('col-body').classList.add('hidden');
+  ['m-score','m-verdict','m-col','m-gap','m-closure'].forEach(id=>{$(id).textContent='—';});
+  $('runMeta').textContent='';
+}
+function prepareRun(data){
+  LAST=data;
+  $('authTag').textContent=data.runContext?.authLevel||'L2';
+  $('runMeta').textContent='推演进行中…';
+  $('verdict-lock').classList.remove('hidden');
+}
+function revealVerdict(data){
+  $('verdict-lock').classList.add('hidden');
+  LAST=data;
+  const v=data.verdict, logs=data.logs||LOGS;
+  $('metrics').classList.remove('hidden');
+  $('m-score').textContent=v.feasibilityScore;
+  $('m-verdict').textContent=v.verdict;
+  $('m-col').textContent=zhCol(data.collector.collectorVerdict);
+  $('m-gap').textContent=(v.defenseGaps||[]).map(zhGap).join(',')||'—';
+  $('m-closure').textContent=data.attackPath.chainClosure||'—';
+  $('runMeta').textContent=(v.validationRunId||'')+' · '+(data.mode||'')+' · '+(v.recommendation||'');
+  $('authTag').textContent=data.runContext?.authLevel||'L2';
+  if(data.logs){
+    const f=formatLogs(data.logs);
+    renderLogLines($('log-siem'),f.siem);
+    renderLogLines($('log-waf'),f.waf,'alert');
+    renderLogLines($('log-fw'),f.fw);
+    renderLogLines($('log-app'),f.app);
+    renderLogLines($('log-auth'),f.auth);
+    renderLogLines($('log-exec'),f.exec);
+    renderLogLines($('log-audit'),f.audit);
+  }
+  if(data.validationPlan) renderLogLines($('log-plan'),buildPlanLogs(data));
+  showTopoVerdict(data);
+  renderDual(data);
+  renderCollector(logs,data.collector,data.runContext);
+}
+function renderResult(data,skipTopo=false){
+  if(skipTopo){prepareRun(data);return;}
+  revealVerdict(data);
+  if(data.topology) renderTopology(data.topology,{pathStep:-1,animate:true});
+}
+
+async function init(){
+  renderLegend();
+  fetch('/api/version').then(r=>r.json()).then(v=>{
+    const el=$('b-portal');
+    if(el&&v.build) el.title=`build ${v.build}`;
+  }).catch(()=>{});
+  CFG=await fetch('/api/platform').then(r=>r.json());
+  const mx=await fetch('/api/matrix').then(r=>r.json());
+  $('matrix').querySelector('tbody').innerHTML=mx.map(r=>`<tr data-gap="${r.gap}"><td>${r.poc}</td><td>${r.collector.replace('alerted + blocked','有告警且已拦截').replace('alerted + 未阻断','有告警未拦截').replace('silent','无记录').replace('任意','任意')}</td><td>${r.status==='blocked'?'已拦截':r.status==='confirmed'?'成立':'—'}</td><td>${zhGap(r.gap)}</td></tr>`).join('');
+  $('scene-table').querySelector('tbody').innerHTML=CFG.scenarios.map(s=>`<tr class="${s.demo?'hl':''}"><td>${s.name}</td><td>${s.tracks}</td><td>${s.attack}</td><td>${s.demo?'<span class="tag g">可运行</span>':'待接入'}</td></tr>`).join('');
+  await loadScenario($('scenario').value);
+  health();setInterval(health,15000);
+}
+
+$('scenario').onchange=()=>loadScenario($('scenario').value);
+$('logRailToggle').onclick=()=>setLogRailCollapsed(!$('workspace').classList.contains('logs-collapsed'));
+$('logExpandAll').onclick=()=>document.querySelectorAll('.log-group').forEach(g=>g.setAttribute('open',''));
+$('logCollapseAll').onclick=()=>document.querySelectorAll('.log-group').forEach(g=>g.removeAttribute('open'));
+$('runBtn').onclick=async()=>{
+  const btn=$('runBtn');btn.disabled=true;
+  const sc=$('scenario').value,mode=$('mode').value;
+  const token=++topoAnimToken;
+  document.querySelectorAll('.pipe .s').forEach(s=>s.classList.remove('on','ok'));
+  resetVerdictUI();
+  switchTab('center');
+  $('workspace').scrollIntoView({behavior:'smooth',block:'nearest'});
+  try{
+    const data=await fetch(`/api/run/${sc}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode})}).then(r=>r.json());
+    if(token!==topoAnimToken) return;
+    renderResult(data,true);
+    await playTopologyAnimation(data,token);
+  }catch(e){alert(e);}
+  btn.disabled=false;
+};
+
+async function health(){
+  const h=await fetch('/api/health').then(r=>r.json());
+  [['b-portal','控制台',true],['b-target','靶场',h.target],['b-openaev','OpenAEV',h.openaev]].forEach(([id,lbl,ok])=>{const el=$(id);el.className='badge '+(ok?'ok':'');el.textContent=lbl+(ok?' ●':' ○');});
+}
+init();
+</script>
+</body>
+</html>

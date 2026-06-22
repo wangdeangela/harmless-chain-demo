@@ -1,0 +1,36 @@
+{
+  "attackPathId": "path-sqli-demo-001",
+  "title": "内网 SQL 注入 + WAF 防护对账",
+  "authLevel": "L2",
+  "steps": [
+    {
+      "stepId": "step-1",
+      "technique": "T1190",
+      "tactic": "Initial Access",
+      "targetUrl": "http://127.0.0.1:8099/login",
+      "proofPointId": "PP-01",
+      "description": "入口可达性"
+    },
+    {
+      "stepId": "step-2",
+      "technique": "T1190",
+      "tactic": "Exploit Public-Facing Application",
+      "targetUrl": "http://127.0.0.1:8099/login",
+      "proofPointId": "PP-02",
+      "description": "布尔 SQLi 无害探针",
+      "templates": {
+        "pentestAi": "sqli-boolean-probe",
+        "openAev": "http-sqli-inject-safe"
+      }
+    },
+    {
+      "stepId": "step-3",
+      "technique": "T1213",
+      "tactic": "Data from Information Repositories",
+      "targetUrl": "http://127.0.0.1:8099/api/users/1",
+      "proofPointId": "PP-05",
+      "description": "元数据触达（替代证明）",
+      "maxAction": "alternative_proof"
+    }
+  ]
+}

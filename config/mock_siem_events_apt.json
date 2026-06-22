@@ -1,0 +1,26 @@
+{
+  "scenarioId": "apt-lateral-blocked",
+  "source": "SOC/SIEM 模拟告警",
+  "events": [
+    {
+      "eventId": "evt-101",
+      "timestamp": "2026-06-15T09:00:01Z",
+      "ruleId": "FW-Deny-9001",
+      "severity": "high",
+      "technique": "T1021",
+      "sourceHostname": "endpoint-a",
+      "targetHostname": "file-server-b",
+      "sourceIp": "10.10.1.50",
+      "targetIp": "10.10.2.80",
+      "detail": "SMB 445 连接尝试",
+      "action": "deny",
+      "defenseControl": "Firewall"
+    }
+  ],
+  "twinContext": {
+    "protectedBy": [
+      {"asset": "file-server-b", "control": "Firewall", "policyId": "FW-Deny-9001", "blockRateEstimate": 0.95}
+    ],
+    "chainClosure": 0.78
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "sqli-waf-demo": {
+    "pocResults": [
+      {
+        "stepId": "step-2a",
+        "templateId": "sqli-boolean-probe",
+        "track": "pentest-ai",
+        "status": "confirmed",
+        "exploitConfirmed": true,
+        "expectedSignal": "响应差异（302 vs 401）",
+        "detail": {"true": {"code": 302}, "false": {"code": 401}}
+      }
+    ],
+    "injectResults": [
+      {
+        "stepId": "step-2b",
+        "templateId": "http-sqli-inject-safe",
+        "track": "openaev",
+        "status": "confirmed",
+        "executionSuccess": true,
+        "executionLog": "inject_end status=302 template=http-sqli-inject-safe"
+      }
+    ],
+    "collectorEvents": [
+      {"ruleId": "WAF-SQLi-001", "action": "alert", "timestamp": "2026-06-15T08:12:05Z", "detail": "SQLi pattern detected, mode=alert-only"},
+      {"ruleId": "WAF-SQLi-001", "action": "alert", "timestamp": "2026-06-15T08:12:06Z", "detail": "sqli_probe username=admin' AND '1'='1'--"}
+    ],
+    "alternativeProof": {
+      "stepId": "step-3",
+      "status": "alternative_proof",
+      "method": "audit_log_replay",
+      "detail": "DB-Audit-007 命中，mayAccess 边存在"
+    }
+  },
+  "apt-lateral-blocked": {
+    "pocResults": [],
+    "injectResults": [
+      {
+        "stepId": "step-4",
+        "templateId": "smb-portscan-single-hop",
+        "track": "openaev",
+        "status": "fail",
+        "executionSuccess": false,
+        "executionLog": "inject_end status=timeout TCP 445 connection refused"
+      }
+    ],
+    "collectorEvents": [
+      {"ruleId": "FW-Deny-9001", "action": "deny", "timestamp": "2026-06-15T09:00:02Z", "detail": "TCP 445 deny src=10.10.1.50 dst=10.10.2.80"}
+    ],
+    "alternativeProof": null
+  }
+}

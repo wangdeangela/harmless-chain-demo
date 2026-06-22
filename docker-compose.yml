@@ -1,0 +1,33 @@
+services:
+  target:
+    build:
+      context: ./target
+    container_name: harmless-demo-target
+    ports:
+      - "8099:8099"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8099/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  portal:
+    build:
+      context: .
+      dockerfile: portal/Dockerfile
+    container_name: harmless-demo-portal
+    ports:
+      - "8500:8500"
+    environment:
+      TARGET_URL: http://target:8099
+      OPENAEV_URL: http://host.docker.internal:8888
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      target:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # OpenAEV 完整平台（可选，资源需求高，单独 profile 启动）
+  # docker compose --profile openaev -f docker-compose.yml -f docker-compose.openaev.yml up -d

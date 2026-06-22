@@ -1,0 +1,20 @@
+{
+  "authLevels": ["L0", "L1", "L2", "L3", "L4"],
+  "defaultAuth": "L2",
+  "proofPoints": ["PP-01", "PP-02", "PP-03", "PP-04", "PP-05", "PP-06"],
+  "collectorWindowSec": 120,
+  "reconciliation": {
+    "blocked": "攻击已被防护设备拦截",
+    "alerted_not_blocked": "有告警但未阻断，存在防护缺口",
+    "silent": "防护设备无相关记录",
+    "late_alert": "告警延迟，建议人工复核"
+  },
+  "scenarios": [
+    {"id": "sqli-waf-demo", "name": "SQL 注入 + WAF", "tracks": "pentest-ai ∥ OpenAEV", "attack": "T1190→T1078→T1213", "demo": true},
+    {"id": "apt-lateral-blocked", "name": "APT 横向截断", "tracks": "OpenAEV", "attack": "T1021", "demo": true},
+    {"id": "rce-edr", "name": "RCE + EDR", "tracks": "pentest-ai ∥ OpenAEV", "attack": "T1190→T1059", "demo": false},
+    {"id": "weak-pwd", "name": "弱口令", "tracks": "OpenAEV", "attack": "T1110→T1078", "demo": false},
+    {"id": "ransom", "name": "勒索模拟", "tracks": "OpenAEV", "attack": "T1566→T1486", "demo": false},
+    {"id": "exfil", "name": "数据外传", "tracks": "pentest-ai ∥ OpenAEV", "attack": "T1190→T1041", "demo": false}
+  ]
+}

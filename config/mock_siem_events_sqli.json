@@ -1,0 +1,52 @@
+{
+  "scenarioId": "sqli-waf-demo",
+  "source": "SOC/SIEM 模拟告警",
+  "events": [
+    {
+      "eventId": "evt-001",
+      "timestamp": "2026-06-15T08:12:01Z",
+      "ruleId": "WAF-SQLi-001",
+      "severity": "high",
+      "technique": "T1190",
+      "targetHostname": "intra-app.corp",
+      "targetUrl": "http://127.0.0.1:8099/login",
+      "sourceIp": "10.20.30.41",
+      "payload": "username=admin' OR '1'='1",
+      "action": "alert",
+      "defenseControl": "WAF"
+    },
+    {
+      "eventId": "evt-002",
+      "timestamp": "2026-06-15T08:12:45Z",
+      "ruleId": "EDR-WebShell-042",
+      "severity": "medium",
+      "technique": "T1078",
+      "targetHostname": "intra-app.corp",
+      "targetUrl": "http://127.0.0.1:8099/login",
+      "sourceIp": "10.20.30.41",
+      "detail": "异常登录会话 Cookie 签发",
+      "action": "alert",
+      "defenseControl": "EDR"
+    },
+    {
+      "eventId": "evt-003",
+      "timestamp": "2026-06-15T08:13:20Z",
+      "ruleId": "DB-Audit-007",
+      "severity": "low",
+      "technique": "T1213",
+      "targetHostname": "db-server-01",
+      "targetUrl": "http://127.0.0.1:8099/api/users/1",
+      "sourceIp": "10.20.30.41",
+      "detail": "SELECT 元数据查询",
+      "action": "log",
+      "defenseControl": "DB-Audit"
+    }
+  ],
+  "twinContext": {
+    "protectedBy": [
+      {"asset": "intra-app.corp", "control": "WAF", "policyId": "WAF-SQLi-001", "blockRateEstimate": 0.85},
+      {"asset": "intra-app.corp", "control": "EDR", "policyId": "EDR-WebShell-042", "blockRateEstimate": 0.60}
+    ],
+    "chainClosure": 0.82
+  }
+}

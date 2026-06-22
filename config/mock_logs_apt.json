@@ -1,0 +1,48 @@
+{
+  "scenarioId": "apt-lateral-blocked",
+  "siemAlerts": [
+    {"@timestamp": "2026-06-15T08:59:58.220Z", "rule_id": "CORR-APT-002", "severity": "medium", "src_ip": "10.10.1.50", "action": "correlate", "msg": "Lateral movement attempt chain initiated", "raw": "2026-06-15 16:59:58 SIEM correlator START chain_id=CH-99102 host=endpoint-a technique=T1021"},
+    {"@timestamp": "2026-06-15T09:00:00.112Z", "rule_id": "EDR-Net-112", "severity": "medium", "src_ip": "10.10.1.50", "dst_ip": "10.10.2.80", "action": "alert", "msg": "Outbound SMB connection attempt from workstation", "raw": "2026-06-15 17:00:00 EDR endpoint-a ALERT rule=EDR-Net-112 process=smbclient.exe dst=10.10.2.80:445 state=connecting"},
+    {"@timestamp": "2026-06-15T09:00:01.445Z", "rule_id": "FW-Deny-9001", "severity": "high", "src_ip": "10.10.1.50", "dst_ip": "10.10.2.80", "dst_host": "file-server-b", "action": "deny", "msg": "SMB port 445 blocked by zone policy", "raw": "2026-06-15 17:00:01 FW border-zone DENY rule=FW-Deny-9001 proto=tcp src=10.10.1.50:52441 dst=10.10.2.80:445 policy=deny-cross-segment"},
+    {"@timestamp": "2026-06-15T09:00:02.001Z", "rule_id": "FW-Deny-9001", "severity": "high", "src_ip": "10.10.1.50", "dst_ip": "10.10.2.80", "action": "deny", "msg": "SMB retry blocked", "raw": "2026-06-15 17:00:02 FW border-zone DENY rule=FW-Deny-9001 proto=tcp src=10.10.1.50:52442 dst=10.10.2.80:445 policy=deny-cross-segment"},
+    {"@timestamp": "2026-06-15T09:00:03.880Z", "rule_id": "CORR-APT-002", "severity": "high", "src_ip": "10.10.1.50", "action": "correlate", "msg": "Lateral movement blocked at perimeter - chain terminated", "raw": "2026-06-15 17:00:03 SIEM correlator TERMINATE chain_id=CH-99102 step=4 verdict=blocked reason=FW-Deny-9001"}
+  ],
+  "firewallLogs": [
+    {"time": "2026-06-15T09:00:01Z", "src": "10.10.1.50", "dst": "10.10.2.80", "port": 445, "proto": "tcp", "action": "deny", "rule": "FW-Deny-9001", "bytes": 0},
+    {"time": "2026-06-15T09:00:02Z", "src": "10.10.1.50", "dst": "10.10.2.80", "port": 445, "proto": "tcp", "action": "deny", "rule": "FW-Deny-9001", "bytes": 0},
+    {"time": "2026-06-15T09:00:03Z", "src": "10.10.1.50", "dst": "10.10.2.80", "port": 135, "proto": "tcp", "action": "deny", "rule": "FW-Deny-9001", "bytes": 0}
+  ],
+  "ipsLogs": [
+    {"time": "2026-06-15T09:00:01Z", "src": "10.10.1.50", "dst": "10.10.2.80", "sig": "SMB-Lateral-Movement", "action": "log", "detail": "cross-segment SMB - forwarded to FW policy"},
+    {"time": "2026-06-15T09:00:02Z", "src": "10.10.1.50", "dst": "10.10.2.80", "sig": "Port-Scan-SMB", "action": "log", "detail": "single-hop port probe detected"}
+  ],
+  "edrLogs": [
+    {"time": "2026-06-15T08:59:59Z", "host": "endpoint-a", "event": "process_start", "detail": "smbclient.exe spawned by openaev-agent", "result": "logged"},
+    {"time": "2026-06-15T09:00:00Z", "host": "endpoint-a", "event": "network_connect", "dst": "10.10.2.80:445", "result": "timeout", "process": "smbclient.exe"},
+    {"time": "2026-06-15T09:00:01Z", "host": "endpoint-a", "event": "network_connect", "dst": "10.10.2.80:445", "result": "failed", "process": "smbclient.exe"},
+    {"time": "2026-06-15T09:00:03Z", "host": "endpoint-a", "event": "process_exit", "detail": "smbclient.exe exit_code=1", "result": "logged"}
+  ],
+  "executionLogs": [
+    {"time": "2026-06-15T09:00:00Z", "source": "openaev", "template": "smb-portscan-single-hop", "target": "10.10.2.80:445", "result": "fail", "detail": "TCP timeout connection refused by upstream FW"}
+  ],
+  "syslogRaw": [
+    {"time": "2026-06-15T09:00:01Z", "raw": "<134>Jun 15 17:00:01 fw-border-zone %ASA-4-106023: Deny tcp src inside:10.10.1.50/52441 dst servers:10.10.2.80/445 by access-group \"DENY-CROSS-SEG\""},
+    {"time": "2026-06-15T09:00:02Z", "raw": "<134>Jun 15 17:00:02 fw-border-zone %ASA-4-106023: Deny tcp src inside:10.10.1.50/52442 dst servers:10.10.2.80/445 by access-group \"DENY-CROSS-SEG\""}
+  ],
+  "collectorQuery": {
+    "window_start": "inject_end_time",
+    "window_sec": 120,
+    "filters": {"src_ip": "10.10.1.50", "dst_ip": "10.10.2.80", "rule_ids": ["FW-Deny-9001", "EDR-Net-112"]}
+  },
+  "collectorHits": [
+    {"time": "2026-06-15T09:00:01Z", "rule_id": "FW-Deny-9001", "action": "deny", "matched": true, "detail": "TCP 445 deny src=10.10.1.50 dst=10.10.2.80"},
+    {"time": "2026-06-15T09:00:02Z", "rule_id": "FW-Deny-9001", "action": "deny", "matched": true, "detail": "TCP 445 deny retry blocked"},
+    {"time": "2026-06-15T09:00:00Z", "rule_id": "EDR-Net-112", "action": "alert", "matched": true, "detail": "SMB outbound attempt logged"}
+  ],
+  "auditLog": [
+    {"time": "2026-06-15T08:59:58Z", "operator": "chainforge-orchestrator", "stepId": "step-1", "action": "log_to_path", "authLevel": "L2", "verdict": "confirmed"},
+    {"time": "2026-06-15T09:00:00Z", "operator": "openaev-injector", "stepId": "step-4", "action": "smb-portscan-single-hop", "authLevel": "L2", "verdict": "fail"},
+    {"time": "2026-06-15T09:00:03Z", "operator": "collector", "stepId": "step-4c", "action": "fw_syslog_query_120s", "verdict": "blocked"},
+    {"time": "2026-06-15T09:00:04Z", "operator": "chainforge-orchestrator", "stepId": "verdict", "action": "merge_verdict", "verdict": "不成立", "score": "0.0"}
+  ]
+}

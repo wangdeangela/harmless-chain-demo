@@ -1,0 +1,22 @@
+# 运行时输出（本地推演结果、日志、PID）
+output/
+*.log
+*.pid
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.env.*
+
+# macOS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Docker 本地数据卷（如有）
+.docker/

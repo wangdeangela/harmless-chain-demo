@@ -1,0 +1,72 @@
+{
+  "scenarioId": "sqli-waf-demo",
+  "siemAlerts": [
+    {"@timestamp": "2026-06-15T08:11:58.102Z", "rule_id": "CORR-CHAIN-001", "severity": "medium", "src_ip": "10.20.30.41", "dst_host": "intra-app.corp", "action": "correlate", "msg": "Multi-event attack chain correlation started", "raw": "2026-06-15 16:11:58 SIEM correlator START chain_id=CH-88421 src=10.20.30.41 events=3 window=300s"},
+    {"@timestamp": "2026-06-15T08:12:01.234Z", "rule_id": "WAF-SQLi-001", "severity": "high", "src_ip": "10.20.30.41", "dst_host": "intra-app.corp", "url": "/login", "action": "alert", "msg": "SQL injection pattern in username parameter", "raw": "2026-06-15 16:12:01 WAF intra-app.corp ALERT rule=WAF-SQLi-001 src=10.20.30.41 POST /login username=admin' OR '1'='1 mode=alert-only"},
+    {"@timestamp": "2026-06-15T08:12:02.891Z", "rule_id": "IPS-89012", "severity": "low", "src_ip": "10.20.30.41", "dst_host": "intra-app.corp", "action": "log", "msg": "SQL keyword in POST body - no signature match", "raw": "2026-06-15 16:12:02 IPS edge-01 LOG sig_id=89012 action=log url=/login keyword=UNION not_matched"},
+    {"@timestamp": "2026-06-15T08:12:05.334Z", "rule_id": "WAF-SQLi-001", "severity": "high", "src_ip": "10.20.30.41", "dst_host": "intra-app.corp", "action": "alert", "msg": "Boolean-based SQLi probe detected", "raw": "2026-06-15 16:12:05 WAF intra-app.corp ALERT rule=WAF-SQLi-001 src=10.20.30.41 POST /login payload=admin' AND '1'='1'--"},
+    {"@timestamp": "2026-06-15T08:12:06.012Z", "rule_id": "WAF-SQLi-001", "severity": "high", "src_ip": "10.20.30.41", "dst_host": "intra-app.corp", "action": "alert", "msg": "Boolean-based SQLi probe detected (false branch)", "raw": "2026-06-15 16:12:06 WAF intra-app.corp ALERT rule=WAF-SQLi-001 src=10.20.30.41 POST /login payload=admin' AND '1'='2'--"},
+    {"@timestamp": "2026-06-15T08:12:45.891Z", "rule_id": "EDR-WebShell-042", "severity": "medium", "src_ip": "10.20.30.41", "dst_host": "intra-app.corp", "action": "alert", "msg": "Suspicious session cookie issued after auth anomaly", "raw": "2026-06-15 16:12:45 EDR endpoint-web-03 ALERT rule=EDR-WebShell-042 process=java pid=4421 user=www-data session_id=sess_a8f2c901"},
+    {"@timestamp": "2026-06-15T08:12:46.220Z", "rule_id": "AUTH-ANOMALY-03", "severity": "medium", "src_ip": "10.20.30.41", "dst_host": "intra-app.corp", "action": "alert", "msg": "Login success without prior failed attempts", "raw": "2026-06-15 16:12:46 AUTH intra-app.corp ALERT user=admin src=10.20.30.41 method=sqli_bypass cookie_set=true"},
+    {"@timestamp": "2026-06-15T08:13:20.102Z", "rule_id": "DB-Audit-007", "severity": "low", "src_ip": "10.20.30.41", "dst_host": "db-server-01", "action": "log", "msg": "SELECT on users table metadata query", "raw": "2026-06-15 16:13:20 DB-AUDIT db-server-01 LOG user=app_svc query=SELECT id,username FROM users LIMIT 1 rows=1"},
+    {"@timestamp": "2026-06-15T08:13:21.005Z", "rule_id": "CORR-CHAIN-001", "severity": "high", "src_ip": "10.20.30.41", "dst_host": "intra-app.corp", "action": "correlate", "msg": "Attack chain T1190→T1078→T1213 correlated", "raw": "2026-06-15 16:13:21 SIEM correlator MATCH chain_id=CH-88421 techniques=T1190,T1078,T1213 closure=0.82"}
+  ],
+  "wafLogs": [
+    {"time": "2026-06-15T08:11:59Z", "client": "10.20.30.41", "method": "GET", "uri": "/login", "rule": "-", "action": "allow", "payload_snip": "-"},
+    {"time": "2026-06-15T08:12:01Z", "client": "10.20.30.41", "method": "POST", "uri": "/login", "rule": "WAF-SQLi-001", "action": "alert", "payload_snip": "admin' OR '1'='1"},
+    {"time": "2026-06-15T08:12:05Z", "client": "10.20.30.41", "method": "POST", "uri": "/login", "rule": "WAF-SQLi-001", "action": "alert", "payload_snip": "admin' AND '1'='1'--"},
+    {"time": "2026-06-15T08:12:06Z", "client": "10.20.30.41", "method": "POST", "uri": "/login", "rule": "WAF-SQLi-001", "action": "alert", "payload_snip": "admin' AND '1'='2'--"},
+    {"time": "2026-06-15T08:12:07Z", "client": "10.20.30.41", "method": "POST", "uri": "/login", "rule": "WAF-SQLi-001", "action": "alert", "payload_snip": "admin' OR '1'='1'--"},
+    {"time": "2026-06-15T08:12:45Z", "client": "10.20.30.41", "method": "GET", "uri": "/dashboard", "rule": "-", "action": "allow", "payload_snip": "Cookie: sess_a8f2c901"}
+  ],
+  "ipsLogs": [
+    {"time": "2026-06-15T08:12:01Z", "src": "10.20.30.41", "dst": "10.20.10.20", "sig": "SQL-Injection-Generic", "action": "log", "detail": "partial match, below threshold"},
+    {"time": "2026-06-15T08:12:05Z", "src": "10.20.30.41", "dst": "10.20.10.20", "sig": "HTTP-Protocol-Anomaly", "action": "log", "detail": "encoded quote in POST body"}
+  ],
+  "firewallLogs": [
+    {"time": "2026-06-15T08:12:01Z", "src": "10.20.30.41", "dst": "10.20.10.20", "port": 443, "proto": "tcp", "action": "allow", "rule": "FW-HTTPS-IN", "bytes": 1842},
+    {"time": "2026-06-15T08:12:05Z", "src": "10.20.30.41", "dst": "10.20.10.20", "port": 443, "proto": "tcp", "action": "allow", "rule": "FW-HTTPS-IN", "bytes": 2104}
+  ],
+  "appLogs": [
+    {"time": "2026-06-15T08:11:59Z", "level": "INFO", "host": "intra-app.corp", "msg": "GET /login 200 remote=10.20.30.41 ua=pentest-ai/1.0"},
+    {"time": "2026-06-15T08:12:01Z", "level": "WARN", "host": "intra-app.corp", "msg": "sqli_probe_detected username=\"admin' OR '1'='1\" password=x"},
+    {"time": "2026-06-15T08:12:05Z", "level": "WARN", "host": "intra-app.corp", "msg": "sqli_probe_detected username=\"admin' AND '1'='1'--\" password=x"},
+    {"time": "2026-06-15T08:12:06Z", "level": "WARN", "host": "intra-app.corp", "msg": "sqli_probe_detected username=\"admin' AND '1'='2'--\" password=x"},
+    {"time": "2026-06-15T08:12:07Z", "level": "INFO", "host": "intra-app.corp", "msg": "POST /login 302 user_id=1 remote=10.20.30.41 inject_tag=validation:step-2b"},
+    {"time": "2026-06-15T08:12:45Z", "level": "INFO", "host": "intra-app.corp", "msg": "session_created user_id=1 ip=10.20.30.41"}
+  ],
+  "edrLogs": [
+    {"time": "2026-06-15T08:12:45Z", "host": "endpoint-web-03", "event": "process_anomaly", "detail": "java Tomcat unusual auth response 302 after SQL pattern", "result": "alerted"},
+    {"time": "2026-06-15T08:12:46Z", "host": "endpoint-web-03", "event": "network_connection", "dst": "10.20.20.10:3306", "result": "allowed", "process": "mysqld-client"}
+  ],
+  "authLogs": [
+    {"time": "2026-06-15T08:12:07Z", "user": "admin", "src": "10.20.30.41", "action": "login_success", "method": "bypass", "session": "sess_a8f2c901"},
+    {"time": "2026-06-15T08:12:45Z", "user": "admin", "src": "10.20.30.41", "action": "session_refresh", "method": "cookie"}
+  ],
+  "dbLogs": [
+    {"time": "2026-06-15T08:13:20Z", "host": "db-server-01", "level": "AUDIT", "msg": "SELECT id,username FROM users LIMIT 1 conn_id=8821 user=app_svc"},
+    {"time": "2026-06-15T08:13:20Z", "host": "db-server-01", "level": "INFO", "msg": "query_time=3ms rows_returned=1"}
+  ],
+  "executionLogs": [
+    {"time": "2026-06-15T08:12:04Z", "source": "pentest-ai", "template": "sqli-boolean-probe", "target": "http://intra-app.corp/login", "result": "confirmed", "detail": "true=302 false=401 diff=confirmed"},
+    {"time": "2026-06-15T08:12:07Z", "source": "openaev", "template": "http-sqli-inject-safe", "target": "http://intra-app.corp/login", "result": "confirmed", "detail": "inject_end status=302"}
+  ],
+  "collectorQuery": {
+    "window_start": "inject_end_time",
+    "window_sec": 120,
+    "filters": {"target_hostname": "intra-app.corp", "rule_ids": ["WAF-SQLi-001", "EDR-WebShell-042"], "src_ip": "10.20.30.41"}
+  },
+  "collectorHits": [
+    {"time": "2026-06-15T08:12:05Z", "rule_id": "WAF-SQLi-001", "action": "alert", "matched": true, "detail": "SQLi pattern detected, mode=alert-only"},
+    {"time": "2026-06-15T08:12:06Z", "rule_id": "WAF-SQLi-001", "action": "alert", "matched": true, "detail": "sqli_probe username=admin' AND '1'='1'--"},
+    {"time": "2026-06-15T08:12:07Z", "rule_id": "WAF-SQLi-001", "action": "alert", "matched": true, "detail": "openaev inject http-sqli-inject-safe"},
+    {"time": "2026-06-15T08:12:45Z", "rule_id": "EDR-WebShell-042", "action": "alert", "matched": true, "detail": "session cookie anomaly post-auth"}
+  ],
+  "auditLog": [
+    {"time": "2026-06-15T08:11:58Z", "operator": "chainforge-orchestrator", "stepId": "step-1", "action": "log_to_path", "authLevel": "L2", "verdict": "confirmed"},
+    {"time": "2026-06-15T08:12:00Z", "operator": "chainforge-orchestrator", "stepId": "step-2a", "action": "sqli-boolean-probe", "authLevel": "L2", "verdict": "confirmed"},
+    {"time": "2026-06-15T08:12:04Z", "operator": "openaev-injector", "stepId": "step-2b", "action": "http-sqli-inject-safe", "authLevel": "L2", "verdict": "confirmed"},
+    {"time": "2026-06-15T08:12:07Z", "operator": "collector", "stepId": "step-2c", "action": "waf_query_120s", "verdict": "alerted_not_blocked"},
+    {"time": "2026-06-15T08:13:21Z", "operator": "chainforge-orchestrator", "stepId": "verdict", "action": "merge_verdict", "verdict": "部分成立", "score": "0.78"}
+  ]
+}
