@@ -7,11 +7,19 @@
 ## [Unreleased]
 
 ### 待办
+- MCP stdio 服务封装
 - 接入 RCE+EDR、弱口令等 4 个待运行场景
-- OpenAEV 实网 Inject 一键联调
-- 演示截图 GIF 动画
 
-## [1.0.0] - 2026-06-15
+## [1.1.0] - 2026-06-22
+
+### 新增
+- **Streamlit 在线离线演示**（`streamlit_app.py`），iframe 嵌入原 UI，保留约 90 秒拓扑动画
+- `embed/` 模块：离线数据预计算 + dashboard 嵌入打包
+- `docs/DEPLOY_STREAMLIT.md` Streamlit Cloud 免费部署指南
+- 根目录 `requirements.txt`（Streamlit Cloud 依赖）
+
+[Unreleased]: https://github.com/wangdeangela/harmless-chain-demo/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/wangdeangela/harmless-chain-demo/compare/v1.0.0...v1.1.0
 
 ### 新增
 - 图形化 Web 控制台（Flask，`:8500`）

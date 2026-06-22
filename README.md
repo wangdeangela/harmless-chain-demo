@@ -126,6 +126,23 @@ bash scripts/run-sim-flow.sh
 
 输出 JSON 报告至 `output/` 目录（已被 `.gitignore` 排除）。
 
+## 在线演示（Streamlit Cloud · 免费）
+
+保留 **约 90 秒拓扑动画** 的离线公网演示版：
+
+```bash
+pip install -r requirements.txt
+streamlit run streamlit_app.py
+```
+
+部署到 Streamlit Cloud 见 [docs/DEPLOY_STREAMLIT.md](docs/DEPLOY_STREAMLIT.md)。
+
+| 对比 | 本地 Flask `:8500` | Streamlit 在线版 |
+|------|-------------------|------------------|
+| 90 秒动画 | ✅ | ✅（iframe 嵌入原 UI） |
+| 实网 / 靶场 | ✅ | ❌ 仅离线推演 |
+| 分享方式 | 本地 | 公网 URL |
+
 ## API 端点（简要）
 
 | 方法 | 路径 | 说明 |

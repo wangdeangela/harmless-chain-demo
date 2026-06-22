@@ -1,0 +1,2 @@
+# Streamlit Cloud 默认读取此文件；本地 Flask 控制台见 portal/requirements.txt
+streamlit>=1.32.0
