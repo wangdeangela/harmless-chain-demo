@@ -1,8 +1,28 @@
 # ChainForge · 无害化攻击链验证 Demo
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-green.svg)](portal/requirements.txt)
+[![Demo](https://img.shields.io/badge/Demo-8500-orange.svg)](http://127.0.0.1:8500)
+
 本地可运行的无害化攻击链验证平台，集成 **pentest-ai + OpenAEV** 双轨执行与 **防护对账**，支持攻击面拓扑上的四阶段动态推演。
 
 **在线仓库**：[github.com/wangdeangela/harmless-chain-demo](https://github.com/wangdeangela/harmless-chain-demo)
+
+## 演示截图
+
+### 攻击面拓扑（验证推演首页）
+
+![攻击面拓扑](docs/screenshots/demo-home.png)
+
+### 四阶段动态推演进行中
+
+![推演进行中](docs/screenshots/demo-running.png)
+
+### 验证完成 · 防护对账结论
+
+![验证结论](docs/screenshots/demo-verdict.png)
+
+> 点击「启动验证」后约 **90 秒**完成四阶段推演；结论在推演结束后才展示。
 
 ## 功能概览
 
@@ -84,6 +104,7 @@ harmless-chain-demo/
 ├── target/           # 本地无害验证靶场
 ├── config/           # 场景配置、拓扑 JSON、Mock 日志
 ├── scripts/          # 启动脚本
+├── docs/screenshots/ # 演示截图
 └── docker-compose.yml
 ```
 
@@ -127,12 +148,24 @@ flowchart LR
   E --> F[验证结论 verdict]
 ```
 
+## 参与贡献
+
+- Bug 反馈：使用 [Bug 报告模板](.github/ISSUE_TEMPLATE/bug_report.md)
+- 功能建议：使用 [功能建议模板](.github/ISSUE_TEMPLATE/feature_request.md)
+- 变更记录：见 [CHANGELOG.md](CHANGELOG.md)
+
 ## 安全说明
 
 - **仅对本地授权靶场**执行无害探针，禁止对未授权目标使用
 - 默认授权级别 **L2**，止于 ProofPoint，不做破坏性操作
 - 勿将 GitHub Token、内网地址等敏感信息提交到仓库或 Issue
 
+## 许可证
+
+本项目采用 [MIT License](LICENSE) 开源。
+
 ## 更新日志
 
-- **2026-06** — 验证推演页（拓扑 + 日志侧栏）、90s 动态推演、结论延迟展示、防护对账术语统一
+详见 [CHANGELOG.md](CHANGELOG.md)。
+
+- **v1.0.0 (2026-06)** — 验证推演页、90s 动态推演、结论延迟展示、防护对账术语统一
